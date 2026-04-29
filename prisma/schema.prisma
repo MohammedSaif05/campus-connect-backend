@@ -1,0 +1,305 @@
+// ============================================================================
+// Campus Connect — Prisma Schema
+// Multi-tenant OD Management Platform
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum Role {
+  SUPER_ADMIN
+  HOD
+  STAFF
+  STUDENT
+}
+
+enum StaffBatchRoleType {
+  TUTOR
+  SUBJECT_TEACHER
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum TimetableSlotType {
+  SUBJECT
+  BREAK
+  LUNCH
+}
+
+enum OdStatus {
+  PENDING_TUTOR
+  REJECTED_BY_TUTOR
+  PENDING_HOD
+  REJECTED_BY_HOD
+  APPROVED
+}
+
+enum OdApprovalStatus {
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalRole {
+  TUTOR
+  HOD
+}
+
+// ============================================================================
+// Models
+// ============================================================================
+
+model College {
+  id           String   @id @default(uuid())
+  name         String
+  emailAddress String   @map("email_address")
+  collegeCode  String   @unique @map("college_code")
+  city         String
+  state        String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  departments   Department[]
+  users         User[]
+  batches       Batch[]
+  subjects      Subject[]
+  students      Student[]
+  notifications Notification[]
+  odRequests    OdRequest[]
+
+  @@map("colleges")
+}
+
+model Department {
+  id        String @id @default(uuid())
+  collegeId String @map("college_id")
+  name      String
+
+  // Relations
+  college  College   @relation(fields: [collegeId], references: [id])
+  users    User[]
+  batches  Batch[]
+  subjects Subject[]
+
+  @@index([collegeId])
+  @@map("departments")
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  collegeId          String?  @map("college_id")
+  name               String
+  email              String
+  password           String
+  role               Role
+  isTutor            Boolean  @default(false) @map("is_tutor")
+  departmentId       String?  @map("department_id")
+  isActive           Boolean  @default(true) @map("is_active")
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // Relations
+  college            College?            @relation(fields: [collegeId], references: [id])
+  department         Department?         @relation(fields: [departmentId], references: [id])
+  student            Student?
+  staffBatchMappings StaffBatchMapping[]
+  subjectAssignments SubjectAssignment[]
+  tutorBatches       Batch[]             @relation("BatchTutor")
+  odApprovals        OdApproval[]
+  notifications      Notification[]
+  timetableSlots     Timetable[]
+
+  @@unique([collegeId, email])
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model Student {
+  id             String @id @default(uuid())
+  userId         String @unique @map("user_id")
+  collegeId      String @map("college_id")
+  registerNumber String @map("register_number")
+  batchId        String @map("batch_id")
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id])
+  college    College     @relation(fields: [collegeId], references: [id])
+  batch      Batch       @relation(fields: [batchId], references: [id])
+  odRequests OdRequest[]
+
+  @@unique([collegeId, registerNumber])
+  @@index([collegeId])
+  @@index([batchId])
+  @@map("students")
+}
+
+model Batch {
+  id           String  @id @default(uuid())
+  collegeId    String  @map("college_id")
+  departmentId String  @map("department_id")
+  name         String
+  tutorId      String? @map("tutor_id")
+  startYear    Int     @map("start_year")
+  endYear      Int     @map("end_year")
+
+  // Relations
+  college            College             @relation(fields: [collegeId], references: [id])
+  department         Department          @relation(fields: [departmentId], references: [id])
+  tutor              User?               @relation("BatchTutor", fields: [tutorId], references: [id])
+  students           Student[]
+  staffBatchMappings StaffBatchMapping[]
+  subjectAssignments SubjectAssignment[]
+  timetableSlots     Timetable[]
+  odRequests         OdRequest[]
+
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("batches")
+}
+
+model StaffBatchMapping {
+  id       String             @id @default(uuid())
+  staffId  String             @map("staff_id")
+  batchId  String             @map("batch_id")
+  roleType StaffBatchRoleType @map("role_type")
+
+  // Relations
+  staff User  @relation(fields: [staffId], references: [id])
+  batch Batch @relation(fields: [batchId], references: [id])
+
+  @@unique([staffId, batchId, roleType])
+  @@index([staffId])
+  @@index([batchId])
+  @@map("staff_batch_mappings")
+}
+
+model Subject {
+  id           String @id @default(uuid())
+  collegeId    String @map("college_id")
+  name         String
+  subjectCode  String @map("subject_code")
+  departmentId String @map("department_id")
+
+  // Relations
+  college        College             @relation(fields: [collegeId], references: [id])
+  department     Department          @relation(fields: [departmentId], references: [id])
+  assignments    SubjectAssignment[]
+  timetableSlots Timetable[]
+
+  @@unique([collegeId, subjectCode])
+  @@index([collegeId])
+  @@map("subjects")
+}
+
+model SubjectAssignment {
+  id        String @id @default(uuid())
+  subjectId String @map("subject_id")
+  batchId   String @map("batch_id")
+  staffId   String @map("staff_id")
+
+  // Relations
+  subject Subject @relation(fields: [subjectId], references: [id])
+  batch   Batch   @relation(fields: [batchId], references: [id])
+  staff   User    @relation(fields: [staffId], references: [id])
+
+  @@unique([subjectId, batchId])
+  @@index([batchId])
+  @@index([staffId])
+  @@map("subject_assignments")
+}
+
+model Timetable {
+  id        String            @id @default(uuid())
+  batchId   String            @map("batch_id")
+  day       Day
+  startTime String            @map("start_time")
+  endTime   String            @map("end_time")
+  type      TimetableSlotType
+  subjectId String?           @map("subject_id")
+  staffId   String?           @map("staff_id")
+
+  // Relations
+  batch   Batch    @relation(fields: [batchId], references: [id])
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  staff   User?    @relation(fields: [staffId], references: [id])
+
+  @@index([batchId])
+  @@map("timetables")
+}
+
+model OdRequest {
+  id           String       @id @default(uuid())
+  studentId    String       @map("student_id")
+  batchId      String       @map("batch_id")
+  collegeId    String       @map("college_id")
+  subject      String
+  description  String
+  status       OdStatus     @default(PENDING_TUTOR)
+  currentLevel ApprovalRole @default(TUTOR) @map("current_level")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  student   Student      @relation(fields: [studentId], references: [id])
+  batch     Batch        @relation(fields: [batchId], references: [id])
+  college   College      @relation(fields: [collegeId], references: [id])
+  approvals OdApproval[]
+
+  @@index([studentId])
+  @@index([batchId])
+  @@index([status])
+  @@index([collegeId])
+  @@map("od_requests")
+}
+
+model OdApproval {
+  id          String           @id @default(uuid())
+  odRequestId String           @map("od_request_id")
+  approvedBy  String           @map("approved_by")
+  role        ApprovalRole
+  status      OdApprovalStatus
+  remark      String?
+  timestamp   DateTime         @default(now())
+
+  // Relations
+  odRequest OdRequest @relation(fields: [odRequestId], references: [id])
+  approver  User      @relation(fields: [approvedBy], references: [id])
+
+  @@index([odRequestId])
+  @@map("od_approvals")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  collegeId String   @map("college_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  college College @relation(fields: [collegeId], references: [id])
+
+  @@index([userId])
+  @@index([collegeId])
+  @@map("notifications")
+}
