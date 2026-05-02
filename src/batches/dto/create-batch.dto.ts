@@ -14,4 +14,9 @@ export class CreateBatchDto {
   @IsInt()
   @Min(2000)
   endYear: number;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  currentSemester: number;
 }

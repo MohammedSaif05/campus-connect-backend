@@ -10,6 +10,7 @@ import {
 import { Role } from '@prisma/client';
 import { BatchesService } from './batches.service.js';
 import { CreateBatchDto } from './dto/create-batch.dto.js';
+import { UpdateBatchDto } from './dto/update-batch.dto.js';
 import { AssignTutorDto } from './dto/assign-tutor.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -38,5 +39,14 @@ export class BatchesController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.batchesService.assignTutor(id, dto, user);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBatchDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.batchesService.update(id, dto, user);
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { TimetableService } from './timetable.service.js';
 import { CreateTimetableDto } from './dto/create-timetable.dto.js';
@@ -19,8 +19,10 @@ export class TimetableController {
   @Get(':batchId')
   findByBatch(
     @Param('batchId') batchId: string,
+    @Query('semester') semester: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.timetableService.findByBatch(batchId, user);
+    const semesterNum = semester ? parseInt(semester, 10) : undefined;
+    return this.timetableService.findByBatch(batchId, user, semesterNum);
   }
 }

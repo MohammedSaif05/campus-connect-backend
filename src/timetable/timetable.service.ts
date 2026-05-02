@@ -47,12 +47,14 @@ export class TimetableService {
       throw new NotFoundException('Batch not found in your college');
     }
 
-    // Transaction: delete existing slots for this batch, then create new ones
+    // Transaction: delete existing slots for this batch and semester, then create new ones
+    const semester = dto.semester || 1;
     await this.prisma.$transaction([
-      this.prisma.timetable.deleteMany({ where: { batchId: dto.batchId } }),
+      this.prisma.timetable.deleteMany({ where: { batchId: dto.batchId, semester } }),
       this.prisma.timetable.createMany({
         data: dto.slots.map((slot) => ({
           batchId: dto.batchId,
+          semester,
           day: slot.day,
           startTime: slot.startTime,
           endTime: slot.endTime,
@@ -69,7 +71,7 @@ export class TimetableService {
   /**
    * Gets the timetable for a batch, grouped by day.
    */
-  async findByBatch(batchId: string, currentUser: JwtPayload) {
+  async findByBatch(batchId: string, currentUser: JwtPayload, semester?: number) {
     if (!currentUser.collegeId) {
       throw new ForbiddenException('User must belong to a college');
     }
@@ -83,10 +85,16 @@ export class TimetableService {
       throw new NotFoundException('Batch not found in your college');
     }
 
+    const whereClause: any = { batchId };
+    if (semester) {
+      whereClause.semester = semester;
+    }
+
     const slots = await this.prisma.timetable.findMany({
-      where: { batchId },
+      where: whereClause,
       select: {
         id: true,
+        semester: true,
         day: true,
         startTime: true,
         endTime: true,

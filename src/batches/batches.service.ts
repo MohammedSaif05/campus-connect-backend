@@ -8,6 +8,7 @@ import {
 import { Role, StaffBatchRoleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateBatchDto } from './dto/create-batch.dto.js';
+import { UpdateBatchDto } from './dto/update-batch.dto.js';
 import { AssignTutorDto } from './dto/assign-tutor.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
@@ -38,6 +39,7 @@ export class BatchesService {
         departmentId: currentUser.departmentId,
         startYear: dto.startYear,
         endYear: dto.endYear,
+        currentSemester: dto.currentSemester,
       },
       select: {
         id: true,
@@ -45,6 +47,7 @@ export class BatchesService {
         departmentId: true,
         startYear: true,
         endYear: true,
+        currentSemester: true,
         tutorId: true,
       },
     });
@@ -65,6 +68,7 @@ export class BatchesService {
           name: true,
           startYear: true,
           endYear: true,
+          currentSemester: true,
           tutorId: true,
           tutor: { select: { id: true, name: true, email: true } },
           _count: { select: { students: true } },
@@ -149,5 +153,28 @@ export class BatchesService {
     );
 
     return { message: 'Tutor assigned successfully' };
+  }
+
+  async update(id: string, dto: UpdateBatchDto, currentUser: JwtPayload) {
+    const batch = await this.prisma.batch.findFirst({
+      where: {
+        id,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException('Batch not found in your department');
+    }
+
+    if (dto.startYear && dto.endYear && dto.endYear <= dto.startYear) {
+      throw new BadRequestException('End year must be after start year');
+    }
+
+    return this.prisma.batch.update({
+      where: { id },
+      data: dto,
+    });
   }
 }

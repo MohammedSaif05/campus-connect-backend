@@ -40,6 +40,10 @@ export class CreateTimetableDto {
   @IsString()
   batchId: string;
 
+  @IsOptional()
+  @Type(() => Number)
+  semester?: number;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TimetableSlotDto)

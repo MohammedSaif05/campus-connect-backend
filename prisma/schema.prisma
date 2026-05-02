@@ -159,6 +159,7 @@ model Batch {
   tutorId      String? @map("tutor_id")
   startYear    Int     @map("start_year")
   endYear      Int     @map("end_year")
+  currentSemester Int  @default(1) @map("current_semester")
 
   // Relations
   college            College             @relation(fields: [collegeId], references: [id])
@@ -229,6 +230,7 @@ model SubjectAssignment {
 model Timetable {
   id        String            @id @default(uuid())
   batchId   String            @map("batch_id")
+  semester  Int               @default(1)
   day       Day
   startTime String            @map("start_time")
   endTime   String            @map("end_time")
