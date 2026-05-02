@@ -15,19 +15,26 @@
 **Request Body:**
 ```json
 {
-  "collegeCode": "PLATFORM",
   "email": "admin@campusconnect.com",
   "password": "Admin@123"
 }
 ```
 
-> **Note:** SUPER_ADMIN uses `"collegeCode": "PLATFORM"`. All other roles use their actual college code.
+> **Note:** Login does not require a college code. You can log in via email and password alone.
 
 **Success Response (200):**
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "mustChangePassword": true
+  "user": {
+    "id": "uuid-here",
+    "role": "SUPER_ADMIN",
+    "isTutor": false,
+    "departmentId": null,
+    "collegeId": null,
+    "isActive": true,
+    "mustChangePassword": true
+  }
 }
 ```
 
@@ -47,6 +54,8 @@
 > **Access:** Any authenticated user
 
 **Headers:** `Authorization: Bearer <token>`
+
+> **Note:** You do NOT need to send the user's `id` in the payload. The backend securely extracts the `userId` directly from the provided JWT Bearer token to ensure users can only change their own passwords.
 
 **Request Body:**
 ```json

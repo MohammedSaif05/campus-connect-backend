@@ -20,61 +20,23 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  /**
-   * Authenticates a user by college code, email, and password.
-   * SUPER_ADMIN uses collegeCode = "PLATFORM" (has no college).
-   * All other users use their actual college code.
-   */
   async login(dto: LoginDto) {
-    let user;
+    // Find users by email across the entire platform
+    const users = await this.prisma.user.findMany({
+      where: { email: dto.email },
+    });
 
-    if (dto.collegeCode === 'PLATFORM') {
-      // SUPER_ADMIN login — no college association
-      user = await this.prisma.user.findFirst({
-        where: { email: dto.email, collegeId: null },
-        select: {
-          id: true,
-          password: true,
-          role: true,
-          isTutor: true,
-          departmentId: true,
-          collegeId: true,
-          isActive: true,
-          mustChangePassword: true,
-        },
-      });
-    } else {
-      // Normal login — find the college, then find the user within it
-      const college = await this.prisma.college.findUnique({
-        where: { collegeCode: dto.collegeCode },
-        select: { id: true },
-      });
-
-      if (!college) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      user = await this.prisma.user.findUnique({
-        where: {
-          collegeId_email: {
-            collegeId: college.id,
-            email: dto.email,
-          },
-        },
-        select: {
-          id: true,
-          password: true,
-          role: true,
-          isTutor: true,
-          departmentId: true,
-          collegeId: true,
-          isActive: true,
-          mustChangePassword: true,
-        },
-      });
+    if (users.length === 0) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user || !user.isActive) {
+    if (users.length > 1) {
+      throw new BadRequestException('Multiple accounts found for this email. Please contact support.');
+    }
+
+    const user = users[0];
+
+    if (!user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -95,9 +57,12 @@ export class AuthService {
 
     this.logger.log(`User ${user.id} (${user.role}) logged in`);
 
+    // Return the token and complete user details (excluding password)
+    const { password, ...userDetails } = user;
+
     return {
       accessToken: this.jwtService.sign(payload),
-      mustChangePassword: user.mustChangePassword,
+      user: userDetails,
     };
   }
 
