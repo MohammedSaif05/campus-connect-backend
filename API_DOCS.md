@@ -222,6 +222,29 @@
 
 ---
 
+### PATCH `/departments/:id`
+
+> **Access:** SUPER_ADMIN only
+> **Purpose:** Updates an existing department's details.
+
+**Request Body (partial):**
+```json
+{
+  "name": "CSE & IT"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "id": "dept-uuid",
+  "name": "CSE & IT",
+  "collegeId": "college-uuid"
+}
+```
+
+---
+
 ### POST `/hods`
 
 > **Access:** SUPER_ADMIN only
@@ -249,6 +272,34 @@
   "departmentId": "dept-uuid",
   "isActive": true,
   "createdAt": "2026-04-29T08:00:00.000Z"
+}
+```
+
+---
+
+### PATCH `/hods/:id`
+
+> **Access:** SUPER_ADMIN only
+> **Purpose:** Updates an existing HOD's details.
+
+**Request Body (partial):**
+```json
+{
+  "name": "Dr. Ramesh K",
+  "isActive": false
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "id": "user-uuid",
+  "name": "Dr. Ramesh K",
+  "email": "ramesh@abcengg.edu",
+  "role": "HOD",
+  "isTutor": false,
+  "departmentId": "dept-uuid",
+  "isActive": false
 }
 ```
 

@@ -53,6 +53,22 @@ export class DepartmentsService {
     return paginatedResponse(data, total, query);
   }
 
+  async updateDepartment(id: string, dto: import('./dto/update-department.dto.js').UpdateDepartmentDto) {
+    const department = await this.prisma.department.findUnique({
+      where: { id },
+    });
+
+    if (!department) {
+      throw new NotFoundException('Department not found');
+    }
+
+    return this.prisma.department.update({
+      where: { id },
+      data: { name: dto.name },
+      select: { id: true, name: true, collegeId: true },
+    });
+  }
+
   /**
    * Creates an HOD user and assigns them to a department.
    */
@@ -86,6 +102,54 @@ export class DepartmentsService {
       collegeId: dto.collegeId,
       departmentId: dto.departmentId,
       mustChangePassword: true,
+    });
+  }
+
+  /**
+   * Updates an existing HOD user.
+   */
+  async updateHod(id: string, dto: import('./dto/update-hod.dto.js').UpdateHodDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, role: Role.HOD },
+    });
+
+    if (!user) {
+      throw new NotFoundException('HOD not found');
+    }
+
+    if (dto.departmentId) {
+      const department = await this.prisma.department.findFirst({
+        where: { id: dto.departmentId, collegeId: user.collegeId! },
+      });
+      if (!department) {
+        throw new NotFoundException('Department not found in the specified college');
+      }
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.usersService.findByEmailAndCollege(dto.email, user.collegeId!);
+      if (existing) {
+        throw new ConflictException('Email already exists in this college');
+      }
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        email: dto.email,
+        departmentId: dto.departmentId,
+        isActive: dto.isActive,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isTutor: true,
+        departmentId: true,
+        isActive: true,
+      },
     });
   }
 }
