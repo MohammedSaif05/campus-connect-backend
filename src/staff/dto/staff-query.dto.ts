@@ -1,4 +1,5 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
 
 export class StaffQueryDto extends PaginationQueryDto {
@@ -9,4 +10,13 @@ export class StaffQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  /**
+   * Filter by active/inactive status. Defaults to true (active staff only).
+   * Pass ?isActive=false to list deactivated staff.
+   */
+  @IsOptional()
+  @Transform(({ value }) => value === 'false' ? false : value === 'true' ? true : undefined)
+  @IsBoolean()
+  isActive?: boolean;
 }

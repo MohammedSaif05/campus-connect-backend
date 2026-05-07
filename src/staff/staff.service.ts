@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Logger,
@@ -82,6 +83,7 @@ export class StaffService {
 
   /**
    * Returns full details of a single staff member in the HOD's department.
+   * Works for both active and inactive staff (view-only for deactivated).
    */
   async findOne(staffId: string, currentUser: JwtPayload) {
     const staff = await this.prisma.user.findFirst({
@@ -90,6 +92,7 @@ export class StaffService {
         collegeId: currentUser.collegeId!,
         departmentId: currentUser.departmentId!,
         role: Role.STAFF,
+        // No isActive filter — both active and deactivated can be viewed
       },
       select: STAFF_DETAIL_SELECT,
     });
@@ -102,14 +105,17 @@ export class StaffService {
   }
 
   /**
-   * Lists all active staff in the HOD's college and department.
+   * Lists staff in the HOD's department.
+   * ?isActive=true (default) → active staff
+   * ?isActive=false         → deactivated staff
    */
   async findAll(currentUser: JwtPayload, query: StaffQueryDto) {
     const where: any = {
       collegeId: currentUser.collegeId!,
       departmentId: currentUser.departmentId!,
       role: Role.STAFF,
-      isActive: true,
+      // Default to active; pass ?isActive=false for deactivated
+      isActive: query.isActive ?? true,
     };
 
     // Search by name or email (case-insensitive partial match)
@@ -141,7 +147,7 @@ export class StaffService {
   }
 
   /**
-   * Updates a staff member. HOD can only update staff in their own college+department.
+   * Updates a staff member. Only active staff can be edited.
    * Checks for email conflicts if email is being changed.
    */
   async update(
@@ -160,6 +166,10 @@ export class StaffService {
 
     if (!staff) {
       throw new NotFoundException('Staff member not found in your department');
+    }
+
+    if (!staff.isActive) {
+      throw new BadRequestException('Cannot edit a deactivated staff member. Activate them first.');
     }
 
     // If email is being changed, check for duplicates within the college
@@ -190,11 +200,12 @@ export class StaffService {
         collegeId: currentUser.collegeId!,
         departmentId: currentUser.departmentId!,
         role: Role.STAFF,
+        isActive: true,
       },
     });
 
     if (!staff) {
-      throw new NotFoundException('Staff member not found in your department');
+      throw new NotFoundException('Active staff member not found in your department');
     }
 
     await this.prisma.user.update({
@@ -202,10 +213,34 @@ export class StaffService {
       data: { isActive: false },
     });
 
-    this.logger.log(
-      `Staff ${staffId} deactivated by HOD ${currentUser.userId}`,
-    );
-
+    this.logger.log(`Staff ${staffId} deactivated by HOD ${currentUser.userId}`);
     return { message: 'Staff member deactivated' };
+  }
+
+  /**
+   * Re-activates a previously deactivated staff member.
+   */
+  async activate(staffId: string, currentUser: JwtPayload) {
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+        role: Role.STAFF,
+        isActive: false,
+      },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Deactivated staff member not found in your department');
+    }
+
+    await this.prisma.user.update({
+      where: { id: staffId },
+      data: { isActive: true },
+    });
+
+    this.logger.log(`Staff ${staffId} activated by HOD ${currentUser.userId}`);
+    return { message: 'Staff member activated' };
   }
 }

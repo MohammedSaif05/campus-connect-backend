@@ -348,7 +348,7 @@
 
 ---
 
-### GET `/staff?page=1&limit=10&search=suresh`
+### GET `/staff?page=1&limit=10&search=suresh&isActive=true`
 
 > **Access:** HOD only
 
@@ -359,6 +359,7 @@
 | `page` | number | No | Page number (default: 1) |
 | `limit` | number | No | Items per page (default: 10, max: 100) |
 | `search` | string | No | Filter by name or email (case-insensitive, partial match) |
+| `isActive` | boolean | No | `true` = active staff (default), `false` = deactivated staff |
 
 **Success Response (200):**
 ```json
@@ -446,6 +447,15 @@
 }
 ```
 
+**Error Response (400) — editing a deactivated staff:**
+```json
+{
+  "message": "Cannot edit a deactivated staff member. Activate them first.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
 **Error Response (409) — email already in use:**
 ```json
 {
@@ -461,12 +471,35 @@
 ### PATCH `/staff/:id/deactivate`
 
 > **Access:** HOD only
-> **Note:** Soft delete — sets `is_active = false`. No request body needed.
+> **Note:** Soft delete — sets `isActive = false`. No request body needed.
 
 **Success Response (200):**
 ```json
 {
   "message": "Staff member deactivated"
+}
+```
+
+---
+
+### PATCH `/staff/:id/activate`
+
+> **Access:** HOD only
+> **Note:** Re-activates a previously deactivated staff member. No request body needed.
+
+**Success Response (200):**
+```json
+{
+  "message": "Staff member activated"
+}
+```
+
+**Error Response (404) — staff not found or already active:**
+```json
+{
+  "message": "Deactivated staff member not found in your department",
+  "error": "Not Found",
+  "statusCode": 404
 }
 ```
 

@@ -50,4 +50,9 @@ export class StaffController {
   deactivate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.staffService.deactivate(id, user);
   }
+
+  @Patch(':id/activate')
+  activate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.staffService.activate(id, user);
+  }
 }
