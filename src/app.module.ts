@@ -20,6 +20,7 @@ import { TimetableModule } from './timetable/timetable.module.js';
 import { OdModule } from './od/od.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { BulkUploadModule } from './bulk-upload/bulk-upload.module.js';
+import { HealthModule } from './health/health.module.js';
 
 @Module({
   imports: [
@@ -48,6 +49,9 @@ import { BulkUploadModule } from './bulk-upload/bulk-upload.module.js';
 
     // Utilities
     BulkUploadModule,
+
+    // Health check & self-ping (keeps Render awake)
+    HealthModule,
   ],
   providers: [
     // Global JWT guard — all routes require auth unless @Public()
