@@ -28,6 +28,7 @@ export class StaffController {
   }
 
   @Get()
+  @Roles(Role.HOD, Role.STAFF)
   findAll(@CurrentUser() user: JwtPayload, @Query() query: StaffQueryDto) {
     return this.staffService.findAll(user, query);
   }
