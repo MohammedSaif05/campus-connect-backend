@@ -11,9 +11,14 @@ export class UpdateCollegeDto {
 
   @IsOptional()
   @IsString()
+  collegeCode?: string;
+
+  @IsOptional()
+  @IsString()
   city?: string;
 
   @IsOptional()
   @IsString()
   state?: string;
 }
+

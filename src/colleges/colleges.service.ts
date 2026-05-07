@@ -76,6 +76,19 @@ export class CollegesService {
       throw new NotFoundException('College not found');
     }
 
+    // If collegeCode is being changed, check for duplicates
+    if (dto.collegeCode && dto.collegeCode !== college.collegeCode) {
+      const duplicate = await this.prisma.college.findUnique({
+        where: { collegeCode: dto.collegeCode },
+      });
+
+      if (duplicate) {
+        throw new ConflictException(
+          `College with code "${dto.collegeCode}" already exists`,
+        );
+      }
+    }
+
     return this.prisma.college.update({
       where: { id },
       data: dto,
