@@ -348,9 +348,17 @@
 
 ---
 
-### GET `/staff?page=1&limit=10`
+### GET `/staff?page=1&limit=10&search=suresh`
 
 > **Access:** HOD only
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `page` | number | No | Page number (default: 1) |
+| `limit` | number | No | Items per page (default: 10, max: 100) |
+| `search` | string | No | Filter by name or email (case-insensitive, partial match) |
 
 **Success Response (200):**
 ```json
@@ -365,9 +373,14 @@
       "createdAt": "2026-04-29T08:00:00.000Z"
     }
   ],
-  "meta": { "total": 1, "page": 1, "limit": 10 }
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 10
+  }
 }
 ```
+
 
 ---
 

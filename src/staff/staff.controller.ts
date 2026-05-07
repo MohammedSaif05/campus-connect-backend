@@ -15,6 +15,7 @@ import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { StaffQueryDto } from './dto/staff-query.dto.js';
 
 @Controller('staff')
 @Roles(Role.HOD)
@@ -27,7 +28,7 @@ export class StaffController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: JwtPayload, @Query() query: PaginationQueryDto) {
+  findAll(@CurrentUser() user: JwtPayload, @Query() query: StaffQueryDto) {
     return this.staffService.findAll(user, query);
   }
 

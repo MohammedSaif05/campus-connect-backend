@@ -11,7 +11,7 @@ import { UsersService } from '../users/users.service.js';
 import { CreateStaffDto } from './dto/create-staff.dto.js';
 import { UpdateStaffDto } from './dto/update-staff.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { StaffQueryDto } from './dto/staff-query.dto.js';
 import {
   getPrismaPageParams,
   paginatedResponse,
@@ -71,13 +71,21 @@ export class StaffService {
   /**
    * Lists all active staff in the HOD's college and department.
    */
-  async findAll(currentUser: JwtPayload, query: PaginationQueryDto) {
-    const where = {
+  async findAll(currentUser: JwtPayload, query: StaffQueryDto) {
+    const where: any = {
       collegeId: currentUser.collegeId!,
       departmentId: currentUser.departmentId!,
       role: Role.STAFF,
       isActive: true,
     };
+
+    // Search by name or email (case-insensitive partial match)
+    if (query.search?.trim()) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
