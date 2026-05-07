@@ -28,15 +28,25 @@
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "id": "uuid-here",
-    "role": "SUPER_ADMIN",
+    "name": "Dr. Ramesh Kumar",
+    "email": "ramesh@abcengg.edu",
+    "role": "HOD",
     "isTutor": false,
-    "departmentId": null,
-    "collegeId": null,
+    "collegeId": "college-uuid",
+    "departmentId": "dept-uuid",
     "isActive": true,
-    "mustChangePassword": true
+    "mustChangePassword": false,
+    "createdAt": "2026-05-07T08:00:00.000Z",
+    "department": {
+      "id": "dept-uuid",
+      "name": "Computer Science"
+    }
   }
 }
 ```
+
+> **Note:** `department` will be `null` for `SUPER_ADMIN` users since they are not associated with any department.
+
 
 **Error Response (401):**
 ```json

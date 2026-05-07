@@ -21,20 +21,30 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    // Find users by email across the entire platform
-    const users = await this.prisma.user.findMany({
+    // Find user by email, including department name
+    const user = await this.prisma.user.findFirst({
       where: { email: dto.email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        password: true,
+        role: true,
+        isTutor: true,
+        collegeId: true,
+        departmentId: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        department: {
+          select: { id: true, name: true },
+        },
+      },
     });
 
-    if (users.length === 0) {
+    if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-
-    if (users.length > 1) {
-      throw new BadRequestException('Multiple accounts found for this email. Please contact support.');
-    }
-
-    const user = users[0];
 
     if (!user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
@@ -57,7 +67,7 @@ export class AuthService {
 
     this.logger.log(`User ${user.id} (${user.role}) logged in`);
 
-    // Return the token and complete user details (excluding password)
+    // Return token + user details (excluding password)
     const { password, ...userDetails } = user;
 
     return {
@@ -65,6 +75,7 @@ export class AuthService {
       user: userDetails,
     };
   }
+
 
   /**
    * Changes the authenticated user's password.
