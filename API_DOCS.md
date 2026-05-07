@@ -37,8 +37,7 @@
     "isActive": true,
     "mustChangePassword": false,
     "createdAt": "2026-05-07T08:00:00.000Z",
-    "batchId": null,
-    "currentSemester": null,
+    "batch": null,
     "department": {
       "id": "dept-uuid",
       "name": "Computer Science"
@@ -47,10 +46,12 @@
 }
 ```
 
-> **`batchId` / `currentSemester` rules:**
-> - `HOD` / `SUPER_ADMIN` → both `null`
-> - `STAFF` (tutor) → batch UUID + its current semester, or `null` if not assigned
-> - `STUDENT` → their enrolled batch UUID + its current semester
+> **`batch` field rules:**
+> - `HOD` / `SUPER_ADMIN` → `null`
+> - `STAFF` (tutor) → batch object of the batch they tutor, or `null` if not assigned
+> - `STUDENT` → batch object of their enrolled batch
+>
+> **Batch object shape:** `{ id, name, startYear, endYear, currentSemester, isPassedOut }`
 
 > **Note:** `department` will be `null` for `SUPER_ADMIN` users since they are not associated with any department.
 

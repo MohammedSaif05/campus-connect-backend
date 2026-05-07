@@ -67,26 +67,37 @@ export class AuthService {
 
     this.logger.log(`User ${user.id} (${user.role}) logged in`);
 
-    // Resolve batchId + currentSemester for STAFF (tutor) and STUDENT roles
-    let batchId: string | null = null;
-    let currentSemester: number | null = null;
+    // Resolve batch details for STAFF (tutor) and STUDENT roles
+    const batchSelect = {
+      id: true,
+      name: true,
+      startYear: true,
+      endYear: true,
+      currentSemester: true,
+      isPassedOut: true,
+    } as const;
+
+    let batch: {
+      id: string;
+      name: string;
+      startYear: number;
+      endYear: number;
+      currentSemester: number;
+      isPassedOut: boolean;
+    } | null = null;
 
     if (user.role === 'STAFF' && user.isTutor) {
-      // Find the active batch this staff is tutoring
       const mapping = await this.prisma.staffBatchMapping.findFirst({
         where: { staffId: user.id, roleType: 'TUTOR' },
-        select: { batch: { select: { id: true, currentSemester: true } } },
+        select: { batch: { select: batchSelect } },
       });
-      batchId = mapping?.batch?.id ?? null;
-      currentSemester = mapping?.batch?.currentSemester ?? null;
+      batch = mapping?.batch ?? null;
     } else if (user.role === 'STUDENT') {
-      // Find the student record to get their batch
       const studentRecord = await this.prisma.student.findUnique({
         where: { userId: user.id },
-        select: { batch: { select: { id: true, currentSemester: true } } },
+        select: { batch: { select: batchSelect } },
       });
-      batchId = studentRecord?.batch?.id ?? null;
-      currentSemester = studentRecord?.batch?.currentSemester ?? null;
+      batch = studentRecord?.batch ?? null;
     }
 
     // Return token + user details (excluding password)
@@ -94,7 +105,7 @@ export class AuthService {
 
     return {
       accessToken: this.jwtService.sign(payload),
-      user: { ...userDetails, batchId, currentSemester },
+      user: { ...userDetails, batch },
     };
   }
 
