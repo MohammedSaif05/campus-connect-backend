@@ -199,6 +199,7 @@ model Subject {
   name         String
   subjectCode  String @map("subject_code")
   departmentId String @map("department_id")
+  semester     Int
 
   // Relations
   college        College             @relation(fields: [collegeId], references: [id])

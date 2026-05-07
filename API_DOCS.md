@@ -942,7 +942,8 @@ Deactivates a student (soft delete), preventing them from logging in.
 {
   "name": "Data Structures",
   "subjectCode": "CS201",
-  "departmentId": "dept-uuid"
+  "departmentId": "dept-uuid",
+  "semester": 3
 }
 ```
 
@@ -952,23 +953,118 @@ Deactivates a student (soft delete), preventing them from logging in.
   "id": "subject-uuid",
   "name": "Data Structures",
   "subjectCode": "CS201",
-  "departmentId": "dept-uuid"
+  "departmentId": "dept-uuid",
+  "semester": 3
 }
 ```
 
 ---
 
-### GET `/subjects?page=1&limit=10`
+### GET `/subjects?page=1&limit=10&search=data&semester=3`
 
 > **Access:** STAFF or HOD
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `page` | number | No | Page number (default: 1) |
+| `limit` | number | No | Items per page (default: 10, max: 100) |
+| `search` | string | No | Filter by name or subject code (case-insensitive, partial match) |
+| `semester` | number | No | Filter by semester number |
 
 **Success Response (200):**
 ```json
 {
   "data": [
-    { "id": "subject-uuid", "name": "Data Structures", "subjectCode": "CS201", "departmentId": "dept-uuid" }
+    {
+      "id": "subject-uuid",
+      "name": "Data Structures",
+      "subjectCode": "CS201",
+      "departmentId": "dept-uuid",
+      "semester": 3
+    }
   ],
   "meta": { "total": 1, "page": 1, "limit": 10 }
+}
+```
+
+---
+
+### GET `/subjects/:id`
+
+> **Access:** STAFF or HOD
+
+Returns complete details of a single subject including department info, batch assignments (with teaching staff), and timetable slot count.
+
+**Success Response (200):**
+```json
+{
+  "id": "subject-uuid",
+  "name": "Data Structures",
+  "subjectCode": "CS201",
+  "semester": 3,
+  "departmentId": "dept-uuid",
+  "department": {
+    "id": "dept-uuid",
+    "name": "Computer Science and Engineering"
+  },
+  "assignments": [
+    {
+      "id": "sa-uuid",
+      "batch": { "id": "batch-uuid", "name": "CSE 2023-2027 A" },
+      "staff": { "id": "staff-uuid", "name": "Prof. Anita", "email": "anita@abcengg.edu" }
+    }
+  ],
+  "_count": {
+    "timetableSlots": 4
+  }
+}
+```
+
+**Error Response (404) — subject not found:**
+```json
+{
+  "message": "Subject not found in your college",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+---
+
+### PATCH `/subjects/:id`
+
+> **Access:** STAFF or HOD
+
+Edits a subject's name, code, or semester. Subject code uniqueness is enforced per college.
+
+**Request Body:**
+```json
+{
+  "name": "Advanced Data Structures",
+  "subjectCode": "CS301",
+  "semester": 5
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "id": "subject-uuid",
+  "name": "Advanced Data Structures",
+  "subjectCode": "CS301",
+  "departmentId": "dept-uuid",
+  "semester": 5
+}
+```
+
+**Error Response (409) — duplicate subject code:**
+```json
+{
+  "message": "Subject code \"CS301\" already exists in this college",
+  "error": "Conflict",
+  "statusCode": 409
 }
 ```
 

@@ -2,14 +2,16 @@ import {
   Injectable,
   ConflictException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Role, StaffBatchRoleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateSubjectDto } from './dto/create-subject.dto.js';
+import { UpdateSubjectDto } from './dto/update-subject.dto.js';
 import { AssignSubjectDto } from './dto/assign-subject.dto.js';
+import { SubjectQueryDto } from './dto/subject-query.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
 import {
   getPrismaPageParams,
   paginatedResponse,
@@ -17,6 +19,8 @@ import {
 
 @Injectable()
 export class SubjectsService {
+  private readonly logger = new Logger(SubjectsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateSubjectDto, currentUser: JwtPayload) {
@@ -46,18 +50,31 @@ export class SubjectsService {
         subjectCode: dto.subjectCode,
         collegeId: currentUser.collegeId,
         departmentId: dto.departmentId,
+        semester: dto.semester,
       },
       select: {
         id: true,
         name: true,
         subjectCode: true,
         departmentId: true,
+        semester: true,
       },
     });
   }
 
-  async findAll(currentUser: JwtPayload, query: PaginationQueryDto) {
-    const where = { collegeId: currentUser.collegeId! };
+  async findAll(currentUser: JwtPayload, query: SubjectQueryDto) {
+    const where: any = { collegeId: currentUser.collegeId! };
+
+    if (query.search?.trim()) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { subjectCode: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.semester !== undefined) {
+      where.semester = query.semester;
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.subject.findMany({
@@ -68,13 +85,108 @@ export class SubjectsService {
           name: true,
           subjectCode: true,
           departmentId: true,
+          semester: true,
         },
-        orderBy: { name: 'asc' },
+        orderBy: [{ semester: 'asc' }, { name: 'asc' }],
       }),
       this.prisma.subject.count({ where }),
     ]);
 
     return paginatedResponse(data, total, query);
+  }
+
+  /**
+   * Returns complete details of a single subject including its
+   * department, batch assignments (with teaching staff), and timetable count.
+   */
+  async findOne(subjectId: string, currentUser: JwtPayload) {
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: subjectId,
+        collegeId: currentUser.collegeId!,
+      },
+      select: {
+        id: true,
+        name: true,
+        subjectCode: true,
+        semester: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        assignments: {
+          select: {
+            id: true,
+            batch: { select: { id: true, name: true } },
+            staff: { select: { id: true, name: true, email: true } },
+          },
+        },
+        _count: { select: { timetableSlots: true } },
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found in your college');
+    }
+
+    return subject;
+  }
+
+  /**
+   * Updates a subject. Checks for code conflicts if subjectCode is changed.
+   */
+  async update(
+    subjectId: string,
+    dto: UpdateSubjectDto,
+    currentUser: JwtPayload,
+  ) {
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: subjectId,
+        collegeId: currentUser.collegeId!,
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found in your college');
+    }
+
+    // Check duplicate code if being changed
+    if (dto.subjectCode && dto.subjectCode !== subject.subjectCode) {
+      const existing = await this.prisma.subject.findUnique({
+        where: {
+          collegeId_subjectCode: {
+            collegeId: currentUser.collegeId!,
+            subjectCode: dto.subjectCode,
+          },
+        },
+      });
+      if (existing) {
+        throw new ConflictException(
+          `Subject code "${dto.subjectCode}" already exists in this college`,
+        );
+      }
+    }
+
+    const updated = await this.prisma.subject.update({
+      where: { id: subjectId },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.subjectCode && { subjectCode: dto.subjectCode }),
+        ...(dto.semester !== undefined && { semester: dto.semester }),
+      },
+      select: {
+        id: true,
+        name: true,
+        subjectCode: true,
+        departmentId: true,
+        semester: true,
+      },
+    });
+
+    this.logger.log(
+      `Subject ${subjectId} updated by ${currentUser.role} ${currentUser.userId}`,
+    );
+
+    return updated;
   }
 
   /**

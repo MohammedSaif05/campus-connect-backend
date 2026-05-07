@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
 
 export class CreateSubjectDto {
   @IsNotEmpty()
@@ -12,4 +12,9 @@ export class CreateSubjectDto {
   @IsNotEmpty()
   @IsString()
   departmentId: string;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  semester: number;
 }
