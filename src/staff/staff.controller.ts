@@ -32,6 +32,11 @@ export class StaffController {
     return this.staffService.findAll(user, query);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.staffService.findOne(id, user);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,

@@ -17,6 +17,18 @@ import {
   paginatedResponse,
 } from '../common/utils/pagination.util.js';
 
+/** Reusable select shape for a full staff profile */
+const STAFF_DETAIL_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  isTutor: true,
+  isActive: true,
+  mustChangePassword: true,
+  createdAt: true,
+  department: { select: { id: true, name: true } },
+} as const;
+
 @Injectable()
 export class StaffService {
   private readonly logger = new Logger(StaffService.name);
@@ -69,6 +81,27 @@ export class StaffService {
   }
 
   /**
+   * Returns full details of a single staff member in the HOD's department.
+   */
+  async findOne(staffId: string, currentUser: JwtPayload) {
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+        role: Role.STAFF,
+      },
+      select: STAFF_DETAIL_SELECT,
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found in your department');
+    }
+
+    return staff;
+  }
+
+  /**
    * Lists all active staff in the HOD's college and department.
    */
   async findAll(currentUser: JwtPayload, query: StaffQueryDto) {
@@ -109,6 +142,7 @@ export class StaffService {
 
   /**
    * Updates a staff member. HOD can only update staff in their own college+department.
+   * Checks for email conflicts if email is being changed.
    */
   async update(
     staffId: string,
@@ -128,16 +162,21 @@ export class StaffService {
       throw new NotFoundException('Staff member not found in your department');
     }
 
+    // If email is being changed, check for duplicates within the college
+    if (dto.email && dto.email !== staff.email) {
+      const duplicate = await this.usersService.findByEmailAndCollege(
+        dto.email,
+        currentUser.collegeId!,
+      );
+      if (duplicate) {
+        throw new ConflictException('Email already exists in this college');
+      }
+    }
+
     return this.prisma.user.update({
       where: { id: staffId },
       data: dto,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isTutor: true,
-        isActive: true,
-      },
+      select: STAFF_DETAIL_SELECT,
     });
   }
 

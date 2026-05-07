@@ -384,14 +384,47 @@
 
 ---
 
+### GET `/staff/:id`
+
+> **Access:** HOD only
+
+**Success Response (200):**
+```json
+{
+  "id": "staff-uuid",
+  "name": "Prof. Suresh",
+  "email": "suresh@abcengg.edu",
+  "isTutor": false,
+  "isActive": true,
+  "mustChangePassword": false,
+  "createdAt": "2026-04-29T08:00:00.000Z",
+  "department": {
+    "id": "dept-uuid",
+    "name": "Computer Science"
+  }
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "message": "Staff member not found in your department",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+---
+
 ### PATCH `/staff/:id`
 
 > **Access:** HOD only
 
-**Request Body (partial):**
+**Request Body (all fields optional — send only what you want to change):**
 ```json
 {
   "name": "Prof. Suresh M",
+  "email": "suresh.m@abcengg.edu",
   "isTutor": true
 }
 ```
@@ -401,11 +434,27 @@
 {
   "id": "staff-uuid",
   "name": "Prof. Suresh M",
-  "email": "suresh@abcengg.edu",
+  "email": "suresh.m@abcengg.edu",
   "isTutor": true,
-  "isActive": true
+  "isActive": true,
+  "mustChangePassword": false,
+  "createdAt": "2026-04-29T08:00:00.000Z",
+  "department": {
+    "id": "dept-uuid",
+    "name": "Computer Science"
+  }
 }
 ```
+
+**Error Response (409) — email already in use:**
+```json
+{
+  "message": "Email already exists in this college",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
+
 
 ---
 
