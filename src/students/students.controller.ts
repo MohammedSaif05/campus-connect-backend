@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { StudentsService } from './students.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { StudentQueryDto } from './dto/student-query.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
 
 @Controller('students')
 @Roles(Role.STAFF, Role.HOD)
@@ -19,11 +19,12 @@ export class StudentsController {
   }
 
   @Get()
-  findAll(
-    @Query('batchId') batchId: string,
-    @CurrentUser() user: JwtPayload,
-    @Query() query: PaginationQueryDto,
-  ) {
-    return this.studentsService.findAll(batchId, user, query);
+  findAll(@CurrentUser() user: JwtPayload, @Query() query: StudentQueryDto) {
+    return this.studentsService.findAll(user, query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.studentsService.findOne(id, user);
   }
 }

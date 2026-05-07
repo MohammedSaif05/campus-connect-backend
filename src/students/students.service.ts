@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersService } from '../users/users.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { StudentQueryDto } from './dto/student-query.dto.js';
 import {
   getPrismaPageParams,
   paginatedResponse,
@@ -133,22 +133,37 @@ export class StudentsService {
   }
 
   /**
-   * Lists students in a batch. Tutor sees their own batch students.
+   * Lists students in a batch with search and isActive filter.
+   * Response shape: id, name, registerNumber, isActive (flat — no nested user object).
    */
   async findAll(
-    batchId: string,
     currentUser: JwtPayload,
-    query: PaginationQueryDto,
+    query: StudentQueryDto,
   ) {
-    // Tutors can only see their assigned batches
+    const batchId = query.batchId;
+
+    if (!batchId) {
+      throw new ForbiddenException('batchId query parameter is required');
+    }
+
+    // Tutors can only see their assigned batch
     if (currentUser.role === Role.STAFF) {
       await this.validateTutorForBatch(currentUser, batchId);
     }
 
-    const where = {
+    const where: any = {
       batchId,
-      college: { id: currentUser.collegeId! },
+      collegeId: currentUser.collegeId!,
+      user: { isActive: query.isActive ?? true },
     };
+
+    if (query.search?.trim()) {
+      where.OR = [
+        { user: { name: { contains: query.search, mode: 'insensitive' } } },
+        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+        { registerNumber: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.student.findMany({
@@ -157,20 +172,70 @@ export class StudentsService {
         select: {
           id: true,
           registerNumber: true,
-          batchId: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              isActive: true,
-            },
-          },
+          user: { select: { name: true, isActive: true } },
         },
+        orderBy: { user: { name: 'asc' } },
       }),
       this.prisma.student.count({ where }),
     ]);
 
-    return paginatedResponse(data, total, query);
+    // Flatten: { id, name, registerNumber, isActive }
+    const flattened = data.map((s) => ({
+      id: s.id,
+      name: s.user.name,
+      registerNumber: s.registerNumber,
+      isActive: s.user.isActive,
+    }));
+
+    return paginatedResponse(flattened, total, query);
+  }
+
+  /**
+   * Returns full details of a single student.
+   */
+  async findOne(studentId: string, currentUser: JwtPayload) {
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        collegeId: currentUser.collegeId!,
+      },
+      select: {
+        id: true,
+        registerNumber: true,
+        batchId: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            isActive: true,
+            mustChangePassword: true,
+            createdAt: true,
+          },
+        },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            startYear: true,
+            endYear: true,
+            currentSemester: true,
+            isPassedOut: true,
+          },
+        },
+        _count: { select: { odRequests: true } },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your college');
+    }
+
+    // Tutors can only view students in their own batch
+    if (currentUser.role === Role.STAFF) {
+      await this.validateTutorForBatch(currentUser, student.batchId);
+    }
+
+    return student;
   }
 }

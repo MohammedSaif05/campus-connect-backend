@@ -770,9 +770,19 @@ Returns complete details of a single batch including tutor info, department, sub
 
 ---
 
-### GET `/students?batchId=<uuid>&page=1&limit=10`
+### GET `/students?batchId=<uuid>&page=1&limit=10&search=saif&isActive=true`
 
 > **Access:** STAFF (tutor of batch) or HOD
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `batchId` | string | **Yes** | UUID of the batch to list students from |
+| `page` | number | No | Page number (default: 1) |
+| `limit` | number | No | Items per page (default: 10, max: 100) |
+| `search` | string | No | Filter by name, email or register number (case-insensitive) |
+| `isActive` | boolean | No | `true` = active students (default), `false` = deactivated students |
 
 **Success Response (200):**
 ```json
@@ -780,17 +790,57 @@ Returns complete details of a single batch including tutor info, department, sub
   "data": [
     {
       "id": "student-uuid",
+      "name": "Mohammed Saif",
       "registerNumber": "2023CSE001",
-      "batchId": "batch-uuid",
-      "user": {
-        "id": "user-uuid",
-        "name": "Mohammed Saif",
-        "email": "saif@student.abcengg.edu",
-        "isActive": true
-      }
+      "isActive": true
     }
   ],
   "meta": { "total": 60, "page": 1, "limit": 10 }
+}
+```
+
+---
+
+### GET `/students/:id`
+
+> **Access:** STAFF (tutor of the student's batch) or HOD
+
+Returns complete details of a single student including their batch info and OD request count.
+
+**Success Response (200):**
+```json
+{
+  "id": "student-uuid",
+  "registerNumber": "2023CSE001",
+  "batchId": "batch-uuid",
+  "user": {
+    "id": "user-uuid",
+    "name": "Mohammed Saif",
+    "email": "saif@student.abcengg.edu",
+    "isActive": true,
+    "mustChangePassword": false,
+    "createdAt": "2026-04-29T08:00:00.000Z"
+  },
+  "batch": {
+    "id": "batch-uuid",
+    "name": "CSE 2023-2027 A",
+    "startYear": 2023,
+    "endYear": 2027,
+    "currentSemester": 3,
+    "isPassedOut": false
+  },
+  "_count": {
+    "odRequests": 5
+  }
+}
+```
+
+**Error Response (404) — student not found:**
+```json
+{
+  "message": "Student not found in your college",
+  "error": "Not Found",
+  "statusCode": 404
 }
 ```
 
