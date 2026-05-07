@@ -4,11 +4,14 @@ import {
   ForbiddenException,
   Logger,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Role, StaffBatchRoleType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersService } from '../users/users.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 import { StudentQueryDto } from './dto/student-query.dto.js';
 import {
@@ -237,5 +240,128 @@ export class StudentsService {
     }
 
     return student;
+  }
+
+  /**
+   * Updates a student member. Only active students can be edited.
+   */
+  async update(
+    studentId: string,
+    dto: UpdateStudentDto,
+    currentUser: JwtPayload,
+  ) {
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        collegeId: currentUser.collegeId!,
+      },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your college');
+    }
+
+    if (!student.user.isActive) {
+      throw new BadRequestException(
+        'Cannot edit a deactivated student member. Activate them first.',
+      );
+    }
+
+    // Tutors can only edit students in their own batch
+    if (currentUser.role === Role.STAFF) {
+      await this.validateTutorForBatch(currentUser, student.batchId);
+    }
+
+    if (dto.email && dto.email !== student.user.email) {
+      const existingUser = await this.usersService.findByEmailAndCollege(
+        dto.email,
+        currentUser.collegeId!,
+      );
+      if (existingUser) {
+        throw new ConflictException('Email already exists in this college');
+      }
+    }
+
+    if (dto.registerNumber && dto.registerNumber !== student.registerNumber) {
+      const existingStudent = await this.prisma.student.findUnique({
+        where: {
+          collegeId_registerNumber: {
+            collegeId: currentUser.collegeId!,
+            registerNumber: dto.registerNumber,
+          },
+        },
+      });
+      if (existingStudent) {
+        throw new ConflictException(
+          'Register number already exists in this college',
+        );
+      }
+    }
+
+    const userUpdateData: any = {};
+    if (dto.name) userUpdateData.name = dto.name;
+    if (dto.email) userUpdateData.email = dto.email;
+    if (dto.dob) {
+      userUpdateData.password = await bcrypt.hash(dto.dob, 10);
+      userUpdateData.mustChangePassword = true;
+    }
+
+    const studentUpdateData: any = {};
+    if (dto.registerNumber) studentUpdateData.registerNumber = dto.registerNumber;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userUpdateData).length > 0) {
+        await tx.user.update({
+          where: { id: student.userId },
+          data: userUpdateData,
+        });
+      }
+
+      if (Object.keys(studentUpdateData).length > 0) {
+        await tx.student.update({
+          where: { id: studentId },
+          data: studentUpdateData,
+        });
+      }
+
+      return this.findOne(studentId, currentUser);
+    });
+  }
+
+  /**
+   * Deactivates a student (soft delete).
+   */
+  async deactivate(studentId: string, currentUser: JwtPayload) {
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        collegeId: currentUser.collegeId!,
+      },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your college');
+    }
+
+    if (!student.user.isActive) {
+      throw new BadRequestException('Student is already deactivated');
+    }
+
+    if (currentUser.role === Role.STAFF) {
+      await this.validateTutorForBatch(currentUser, student.batchId);
+    }
+
+    await this.prisma.user.update({
+      where: { id: student.userId },
+      data: { isActive: false },
+    });
+
+    this.logger.log(
+      `Student ${studentId} deactivated by ${currentUser.role} ${currentUser.userId}`,
+    );
+
+    return { message: 'Student deactivated successfully' };
   }
 }

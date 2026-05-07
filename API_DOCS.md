@@ -852,6 +852,85 @@ Returns complete details of a single student including their batch info and OD r
 
 ---
 
+### PATCH `/students/:id`
+
+> **Access:** STAFF (tutor of the student's batch) or HOD
+
+Edits a student's details. Passing `dob` resets their password to the new `dob` and sets `mustChangePassword` to `true`.
+
+**Request Body:**
+```json
+{
+  "name": "Mohammed Saif Updated",
+  "email": "saif.new@student.abcengg.edu",
+  "registerNumber": "2023CSE001X",
+  "dob": "16062005"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "id": "student-uuid",
+  "registerNumber": "2023CSE001X",
+  "batchId": "batch-uuid",
+  "user": {
+    "id": "user-uuid",
+    "name": "Mohammed Saif Updated",
+    "email": "saif.new@student.abcengg.edu",
+    "isActive": true,
+    "mustChangePassword": true,
+    "createdAt": "2026-04-29T08:00:00.000Z"
+  },
+  "batch": {
+    "id": "batch-uuid",
+    "name": "CSE 2023-2027 A",
+    "startYear": 2023,
+    "endYear": 2027,
+    "currentSemester": 3,
+    "isPassedOut": false
+  },
+  "_count": {
+    "odRequests": 5
+  }
+}
+```
+
+**Error Response (400) — deactivated student:**
+```json
+{
+  "message": "Cannot edit a deactivated student member. Activate them first.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+---
+
+### PATCH `/students/:id/deactivate`
+
+> **Access:** STAFF (tutor of the student's batch) or HOD
+
+Deactivates a student (soft delete), preventing them from logging in.
+
+**Success Response (200):**
+```json
+{
+  "message": "Student deactivated successfully"
+}
+```
+
+**Error Response (400) — already deactivated:**
+```json
+{
+  "message": "Student is already deactivated",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+---
+
 ## 📚 Subjects
 
 ### POST `/subjects`

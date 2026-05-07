@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { StudentsService } from './students.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { StudentQueryDto } from './dto/student-query.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -26,5 +27,19 @@ export class StudentsController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.studentsService.findOne(id, user);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateStudentDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.studentsService.update(id, dto, user);
+  }
+
+  @Patch(':id/deactivate')
+  deactivate(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.studentsService.deactivate(id, user);
   }
 }
