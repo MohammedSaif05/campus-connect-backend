@@ -38,6 +38,7 @@
     "mustChangePassword": false,
     "createdAt": "2026-05-07T08:00:00.000Z",
     "batchId": null,
+    "currentSemester": null,
     "department": {
       "id": "dept-uuid",
       "name": "Computer Science"
@@ -46,10 +47,10 @@
 }
 ```
 
-> **`batchId` rules:**
-> - `HOD` / `SUPER_ADMIN` → always `null`
-> - `STAFF` (tutor) → UUID of the batch they are currently tutoring, or `null` if not assigned
-> - `STUDENT` → UUID of their enrolled batch
+> **`batchId` / `currentSemester` rules:**
+> - `HOD` / `SUPER_ADMIN` → both `null`
+> - `STAFF` (tutor) → batch UUID + its current semester, or `null` if not assigned
+> - `STUDENT` → their enrolled batch UUID + its current semester
 
 > **Note:** `department` will be `null` for `SUPER_ADMIN` users since they are not associated with any department.
 
