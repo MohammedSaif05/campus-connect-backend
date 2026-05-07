@@ -571,6 +571,63 @@
 
 ---
 
+### GET `/batches/:id`
+
+> **Access:** HOD only
+
+Returns complete details of a single batch including tutor info, department, subject assignments (with the teaching staff for each subject), and all staff-batch mappings.
+
+**Success Response (200):**
+```json
+{
+  "id": "batch-uuid",
+  "name": "CSE 2023-2027 A",
+  "startYear": 2023,
+  "endYear": 2027,
+  "currentSemester": 3,
+  "isPassedOut": false,
+  "tutorId": "staff-uuid",
+  "tutor": {
+    "id": "staff-uuid",
+    "name": "Prof. Suresh",
+    "email": "suresh@abcengg.edu"
+  },
+  "department": {
+    "id": "dept-uuid",
+    "name": "Computer Science and Engineering"
+  },
+  "_count": {
+    "students": 60,
+    "subjectAssignments": 5
+  },
+  "subjectAssignments": [
+    {
+      "id": "sa-uuid",
+      "subject": { "id": "subj-uuid", "name": "Data Structures", "subjectCode": "CS301" },
+      "staff": { "id": "staff-uuid-2", "name": "Prof. Anita", "email": "anita@abcengg.edu" }
+    }
+  ],
+  "staffBatchMappings": [
+    {
+      "id": "sbm-uuid",
+      "roleType": "TUTOR",
+      "staff": { "id": "staff-uuid", "name": "Prof. Suresh", "email": "suresh@abcengg.edu" }
+    }
+  ]
+}
+```
+
+**Error Response (404) — batch not found:**
+```json
+{
+  "message": "Batch not found in your department",
+  "error": "Not Found",
+  "statusCode": 404
+}
+```
+
+---
+
 ### GET `/batches/available-tutors`
 
 > **Access:** HOD only

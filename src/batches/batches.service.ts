@@ -89,6 +89,63 @@ export class BatchesService {
   }
 
   /**
+   * Returns full details of a single batch including department, tutor,
+   * student count, subject assignments, and staff-batch mappings.
+   */
+  async findOne(batchId: string, currentUser: JwtPayload) {
+    const batch = await this.prisma.batch.findFirst({
+      where: {
+        id: batchId,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+      },
+      select: {
+        id: true,
+        name: true,
+        startYear: true,
+        endYear: true,
+        currentSemester: true,
+        isPassedOut: true,
+        tutorId: true,
+        // Tutor details
+        tutor: {
+          select: { id: true, name: true, email: true },
+        },
+        // Department details
+        department: {
+          select: { id: true, name: true },
+        },
+        // Student + subject counts
+        _count: {
+          select: { students: true, subjectAssignments: true },
+        },
+        // Subject assignments with subject info and teaching staff
+        subjectAssignments: {
+          select: {
+            id: true,
+            subject: { select: { id: true, name: true, subjectCode: true } },
+            staff: { select: { id: true, name: true, email: true } },
+          },
+        },
+        // Staff-batch mappings (all staff linked to this batch)
+        staffBatchMappings: {
+          select: {
+            id: true,
+            roleType: true,
+            staff: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException('Batch not found in your department');
+    }
+
+    return batch;
+  }
+
+  /**
    * Lists active staff in the HOD's department who are NOT currently
    * assigned as tutor to any ACTIVE batch — available for tutor assignment.
    * Staff tutoring passed-out batches are considered free.

@@ -37,6 +37,11 @@ export class BatchesController {
     return this.batchesService.availableTutors(user);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.batchesService.findOne(id, user);
+  }
+
   @Patch(':id/assign-tutor')
   assignTutor(
     @Param('id') id: string,
