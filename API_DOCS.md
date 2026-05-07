@@ -516,7 +516,8 @@
 {
   "name": "CSE 2023-2027 A",
   "startYear": 2023,
-  "endYear": 2027
+  "endYear": 2027,
+  "currentSemester": 1
 }
 ```
 
@@ -528,15 +529,25 @@
   "departmentId": "dept-uuid",
   "startYear": 2023,
   "endYear": 2027,
+  "currentSemester": 1,
   "tutorId": null
 }
 ```
 
 ---
 
-### GET `/batches?page=1&limit=10`
+### GET `/batches?page=1&limit=10&search=CSE&isPassedOut=false`
 
 > **Access:** HOD only
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `page` | number | No | Page number (default: 1) |
+| `limit` | number | No | Items per page (default: 10, max: 100) |
+| `search` | string | No | Filter by batch name (case-insensitive, partial match) |
+| `isPassedOut` | boolean | No | `false` = active batches (default), `true` = passed-out batches |
 
 **Success Response (200):**
 ```json
@@ -547,6 +558,8 @@
       "name": "CSE 2023-2027 A",
       "startYear": 2023,
       "endYear": 2027,
+      "currentSemester": 2,
+      "isPassedOut": false,
       "tutorId": "staff-uuid",
       "tutor": { "id": "staff-uuid", "name": "Prof. Suresh", "email": "suresh@abcengg.edu" },
       "_count": { "students": 60 }
@@ -558,9 +571,29 @@
 
 ---
 
+### GET `/batches/available-tutors`
+
+> **Access:** HOD only
+> **Note:** Returns active staff not currently tutoring any **active** batch. Staff freed from passed-out batches appear here automatically.
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": "staff-uuid",
+    "name": "Prof. Suresh",
+    "email": "suresh@abcengg.edu",
+    "isTutor": false
+  }
+]
+```
+
+---
+
 ### PATCH `/batches/:id/assign-tutor`
 
 > **Access:** HOD only
+> **Note:** A staff member can only be tutor of **one batch at a time**. Use `GET /batches/available-tutors` to get eligible staff.
 
 **Request Body:**
 ```json
@@ -573,6 +606,68 @@
 ```json
 {
   "message": "Tutor assigned successfully"
+}
+```
+
+**Error Response (400) — staff already tutoring another batch:**
+```json
+{
+  "message": "Prof. Suresh is already assigned as tutor for another batch.",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+---
+
+### PATCH `/batches/:id/promote`
+
+> **Access:** HOD only
+> **Note:** Increments `currentSemester` by 1. Maximum is `(endYear - startYear) * 2` (e.g. 8 for a 4-year batch).
+
+**Success Response (200):**
+```json
+{
+  "id": "batch-uuid",
+  "name": "CSE 2023-2027 A",
+  "currentSemester": 3,
+  "startYear": 2023,
+  "endYear": 2027,
+  "tutorId": "staff-uuid",
+  "tutor": { "id": "staff-uuid", "name": "Prof. Suresh", "email": "suresh@abcengg.edu" }
+}
+```
+
+**Error Response (400) — already at final semester:**
+```json
+{
+  "message": "Batch is already in its final semester (8).",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+
+---
+
+### PATCH `/batches/:id/passout`
+
+> **Access:** HOD only
+> **Note:** Marks a batch as passed out (irreversible). Automatically frees the tutor if they have no other active batch, making them available in `GET /batches/available-tutors`.
+
+**Success Response (200):**
+```json
+{
+  "message": "Batch marked as passed out successfully"
+}
+```
+
+**Error Response (400) — already passed out:**
+```json
+{
+  "message": "Batch is already marked as passed out.",
+  "error": "Bad Request",
+  "statusCode": 400
 }
 ```
 

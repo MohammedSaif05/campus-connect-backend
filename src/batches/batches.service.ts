@@ -10,8 +10,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateBatchDto } from './dto/create-batch.dto.js';
 import { UpdateBatchDto } from './dto/update-batch.dto.js';
 import { AssignTutorDto } from './dto/assign-tutor.dto.js';
+import { BatchQueryDto } from './dto/batch-query.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
 import {
   getPrismaPageParams,
   paginatedResponse,
@@ -53,11 +53,17 @@ export class BatchesService {
     });
   }
 
-  async findAll(currentUser: JwtPayload, query: PaginationQueryDto) {
-    const where = {
+  async findAll(currentUser: JwtPayload, query: BatchQueryDto) {
+    const where: any = {
       collegeId: currentUser.collegeId!,
       departmentId: currentUser.departmentId!,
+      // Default to active batches; pass ?isPassedOut=true for passed-out batches
+      isPassedOut: query.isPassedOut ?? false,
     };
+
+    if (query.search?.trim()) {
+      where.name = { contains: query.search, mode: 'insensitive' };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.batch.findMany({
@@ -69,6 +75,7 @@ export class BatchesService {
           startYear: true,
           endYear: true,
           currentSemester: true,
+          isPassedOut: true,
           tutorId: true,
           tutor: { select: { id: true, name: true, email: true } },
           _count: { select: { students: true } },
@@ -82,8 +89,33 @@ export class BatchesService {
   }
 
   /**
+   * Lists active staff in the HOD's department who are NOT currently
+   * assigned as tutor to any ACTIVE batch — available for tutor assignment.
+   * Staff tutoring passed-out batches are considered free.
+   */
+  async availableTutors(currentUser: JwtPayload) {
+    return this.prisma.user.findMany({
+      where: {
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+        role: Role.STAFF,
+        isActive: true,
+        // Only exclude staff tutoring an active (non-passed-out) batch
+        tutorBatches: { none: { isPassedOut: false } },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isTutor: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  /**
    * Assigns a tutor to a batch.
-   * Sets is_tutor=true on the user and creates a StaffBatchMapping.
+   * Validates that the staff is not already tutoring another batch.
    */
   async assignTutor(
     batchId: string,
@@ -118,19 +150,30 @@ export class BatchesService {
       throw new NotFoundException('Staff member not found in your department');
     }
 
+    // Ensure the staff is not already tutoring another batch
+    const alreadyTutor = await this.prisma.batch.findFirst({
+      where: {
+        tutorId: dto.staffId,
+        id: { not: batchId }, // Allow reassigning to the same batch
+      },
+    });
+
+    if (alreadyTutor) {
+      throw new BadRequestException(
+        `${staff.name} is already assigned as tutor for another batch.`,
+      );
+    }
+
     // Use a transaction to ensure atomicity
     await this.prisma.$transaction([
-      // Update batch tutor
       this.prisma.batch.update({
         where: { id: batchId },
         data: { tutorId: dto.staffId },
       }),
-      // Mark user as tutor
       this.prisma.user.update({
         where: { id: dto.staffId },
         data: { isTutor: true },
       }),
-      // Create staff-batch mapping (upsert to avoid duplicates)
       this.prisma.staffBatchMapping.upsert({
         where: {
           staffId_batchId_roleType: {
@@ -139,20 +182,55 @@ export class BatchesService {
             roleType: StaffBatchRoleType.TUTOR,
           },
         },
-        create: {
-          staffId: dto.staffId,
-          batchId,
-          roleType: StaffBatchRoleType.TUTOR,
-        },
+        create: { staffId: dto.staffId, batchId, roleType: StaffBatchRoleType.TUTOR },
         update: {},
       }),
     ]);
 
-    this.logger.log(
-      `Tutor ${dto.staffId} assigned to batch ${batchId} by HOD ${currentUser.userId}`,
-    );
-
+    this.logger.log(`Tutor ${dto.staffId} assigned to batch ${batchId} by HOD ${currentUser.userId}`);
     return { message: 'Tutor assigned successfully' };
+  }
+
+  /**
+   * Promotes a batch to the next semester (currentSemester + 1).
+   * Maximum 8 semesters (4-year programme).
+   */
+  async promoteSemester(batchId: string, currentUser: JwtPayload) {
+    const batch = await this.prisma.batch.findFirst({
+      where: {
+        id: batchId,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException('Batch not found in your department');
+    }
+
+    const MAX_SEMESTER = (batch.endYear - batch.startYear) * 2;
+    if (batch.currentSemester >= MAX_SEMESTER) {
+      throw new BadRequestException(
+        `Batch is already in its final semester (${MAX_SEMESTER}).`,
+      );
+    }
+
+    const updated = await this.prisma.batch.update({
+      where: { id: batchId },
+      data: { currentSemester: { increment: 1 } },
+      select: {
+        id: true,
+        name: true,
+        currentSemester: true,
+        startYear: true,
+        endYear: true,
+        tutorId: true,
+        tutor: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    this.logger.log(`Batch ${batchId} promoted to semester ${updated.currentSemester} by HOD ${currentUser.userId}`);
+    return updated;
   }
 
   async update(id: string, dto: UpdateBatchDto, currentUser: JwtPayload) {
@@ -176,5 +254,55 @@ export class BatchesService {
       where: { id },
       data: dto,
     });
+  }
+
+  /**
+   * Marks a batch as passed out.
+   * Frees the tutor (sets isTutor=false) if they are not tutoring any other active batch.
+   */
+  async markPassedOut(batchId: string, currentUser: JwtPayload) {
+    const batch = await this.prisma.batch.findFirst({
+      where: {
+        id: batchId,
+        collegeId: currentUser.collegeId!,
+        departmentId: currentUser.departmentId!,
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException('Batch not found in your department');
+    }
+
+    if (batch.isPassedOut) {
+      throw new BadRequestException('Batch is already marked as passed out.');
+    }
+
+    // Mark the batch as passed out
+    await this.prisma.batch.update({
+      where: { id: batchId },
+      data: { isPassedOut: true },
+    });
+
+    // Free the tutor if they are not tutoring any other active (non-passed-out) batch
+    if (batch.tutorId) {
+      const otherActiveBatch = await this.prisma.batch.findFirst({
+        where: {
+          tutorId: batch.tutorId,
+          id: { not: batchId },
+          isPassedOut: false,
+        },
+      });
+
+      if (!otherActiveBatch) {
+        await this.prisma.user.update({
+          where: { id: batch.tutorId },
+          data: { isTutor: false },
+        });
+        this.logger.log(`Tutor ${batch.tutorId} freed after batch ${batchId} passed out`);
+      }
+    }
+
+    this.logger.log(`Batch ${batchId} marked as passed out by HOD ${currentUser.userId}`);
+    return { message: 'Batch marked as passed out successfully' };
   }
 }

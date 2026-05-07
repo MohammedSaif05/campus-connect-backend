@@ -152,14 +152,15 @@ model Student {
 }
 
 model Batch {
-  id           String  @id @default(uuid())
-  collegeId    String  @map("college_id")
-  departmentId String  @map("department_id")
-  name         String
-  tutorId      String? @map("tutor_id")
-  startYear    Int     @map("start_year")
-  endYear      Int     @map("end_year")
-  currentSemester Int  @default(1) @map("current_semester")
+  id              String  @id @default(uuid())
+  collegeId       String  @map("college_id")
+  departmentId    String  @map("department_id")
+  name            String
+  tutorId         String? @map("tutor_id")
+  startYear       Int     @map("start_year")
+  endYear         Int     @map("end_year")
+  currentSemester Int     @default(1) @map("current_semester")
+  isPassedOut     Boolean @default(false) @map("is_passed_out")
 
   // Relations
   college            College             @relation(fields: [collegeId], references: [id])
