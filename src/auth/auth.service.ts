@@ -67,12 +67,31 @@ export class AuthService {
 
     this.logger.log(`User ${user.id} (${user.role}) logged in`);
 
+    // Resolve batchId for STAFF (tutor) and STUDENT roles
+    let batchId: string | null = null;
+
+    if (user.role === 'STAFF' && user.isTutor) {
+      // Find the active batch this staff is tutoring
+      const mapping = await this.prisma.staffBatchMapping.findFirst({
+        where: { staffId: user.id, roleType: 'TUTOR' },
+        select: { batchId: true },
+      });
+      batchId = mapping?.batchId ?? null;
+    } else if (user.role === 'STUDENT') {
+      // Find the student record to get their batch
+      const studentRecord = await this.prisma.student.findUnique({
+        where: { userId: user.id },
+        select: { batchId: true },
+      });
+      batchId = studentRecord?.batchId ?? null;
+    }
+
     // Return token + user details (excluding password)
     const { password, ...userDetails } = user;
 
     return {
       accessToken: this.jwtService.sign(payload),
-      user: userDetails,
+      user: { ...userDetails, batchId },
     };
   }
 
