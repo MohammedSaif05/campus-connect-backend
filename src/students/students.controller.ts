@@ -20,6 +20,7 @@ export class StudentsController {
   }
 
   @Get()
+  @Roles(Role.STAFF, Role.HOD, Role.STUDENT)
   findAll(@CurrentUser() user: JwtPayload, @Query() query: StudentQueryDto) {
     return this.studentsService.findAll(user, query);
   }

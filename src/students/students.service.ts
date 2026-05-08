@@ -143,7 +143,19 @@ export class StudentsService {
     currentUser: JwtPayload,
     query: StudentQueryDto,
   ) {
-    const batchId = query.batchId;
+    let batchId = query.batchId;
+
+    // Students: auto-resolve batchId from their own record
+    if (currentUser.role === Role.STUDENT) {
+      const student = await this.prisma.student.findUnique({
+        where: { userId: currentUser.userId },
+        select: { batchId: true },
+      });
+      if (!student) {
+        throw new NotFoundException('Student record not found');
+      }
+      batchId = student.batchId;
+    }
 
     if (!batchId) {
       throw new ForbiddenException('batchId query parameter is required');
