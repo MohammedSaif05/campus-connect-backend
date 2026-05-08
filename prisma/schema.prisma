@@ -140,10 +140,11 @@ model Student {
   batchId        String @map("batch_id")
 
   // Relations
-  user       User        @relation(fields: [userId], references: [id])
-  college    College     @relation(fields: [collegeId], references: [id])
-  batch      Batch       @relation(fields: [batchId], references: [id])
-  odRequests OdRequest[]
+  user             User            @relation(fields: [userId], references: [id])
+  college          College         @relation(fields: [collegeId], references: [id])
+  batch            Batch           @relation(fields: [batchId], references: [id])
+  odRequests       OdRequest[]
+  odParticipations OdParticipant[]
 
   @@unique([collegeId, registerNumber])
   @@index([collegeId])
@@ -256,21 +257,39 @@ model OdRequest {
   collegeId    String       @map("college_id")
   subject      String
   description  String
+  isGroup      Boolean      @default(false) @map("is_group")
+  startDate    DateTime     @map("start_date")
+  endDate      DateTime     @map("end_date")
   status       OdStatus     @default(PENDING_TUTOR)
   currentLevel ApprovalRole @default(TUTOR) @map("current_level")
   createdAt    DateTime     @default(now()) @map("created_at")
 
   // Relations
-  student   Student      @relation(fields: [studentId], references: [id])
-  batch     Batch        @relation(fields: [batchId], references: [id])
-  college   College      @relation(fields: [collegeId], references: [id])
-  approvals OdApproval[]
+  student      Student         @relation(fields: [studentId], references: [id])
+  batch        Batch           @relation(fields: [batchId], references: [id])
+  college      College         @relation(fields: [collegeId], references: [id])
+  approvals    OdApproval[]
+  participants OdParticipant[]
 
   @@index([studentId])
   @@index([batchId])
   @@index([status])
   @@index([collegeId])
   @@map("od_requests")
+}
+
+model OdParticipant {
+  id          String @id @default(uuid())
+  odRequestId String @map("od_request_id")
+  studentId   String @map("student_id")
+
+  // Relations
+  odRequest OdRequest @relation(fields: [odRequestId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id])
+
+  @@unique([odRequestId, studentId])
+  @@index([studentId])
+  @@map("od_participants")
 }
 
 model OdApproval {

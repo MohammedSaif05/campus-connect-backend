@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsBoolean, IsOptional, IsArray, IsDateString } from 'class-validator';
 
 export class CreateOdRequestDto {
   @IsNotEmpty()
@@ -8,4 +8,21 @@ export class CreateOdRequestDto {
   @IsNotEmpty()
   @IsString()
   description: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isGroup?: boolean;
+
+  @IsNotEmpty()
+  @IsDateString()
+  startDate: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  endDate: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  participantIds?: string[];
 }

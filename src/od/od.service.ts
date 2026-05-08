@@ -76,25 +76,53 @@ export class OdService {
       throw new NotFoundException('Student record not found');
     }
 
-    // Create the OD request
-    const odRequest = await this.prisma.odRequest.create({
-      data: {
-        studentId: student.id,
-        batchId: student.batchId,
-        collegeId: currentUser.collegeId,
-        subject: dto.subject,
-        description: dto.description,
-        status: OdStatus.PENDING_TUTOR,
-        currentLevel: ApprovalRole.TUTOR,
-      },
-      select: {
-        id: true,
-        subject: true,
-        description: true,
-        status: true,
-        currentLevel: true,
-        createdAt: true,
-      },
+    const isGroup = dto.isGroup ?? false;
+
+    // Build participant IDs (always include the creator)
+    const participantStudentIds = new Set<string>([student.id]);
+    if (isGroup && dto.participantIds?.length) {
+      for (const pid of dto.participantIds) {
+        participantStudentIds.add(pid);
+      }
+    }
+
+    // Create the OD request with participants in a transaction
+    const odRequest = await this.prisma.$transaction(async (tx) => {
+      const od = await tx.odRequest.create({
+        data: {
+          studentId: student.id,
+          batchId: student.batchId,
+          collegeId: currentUser.collegeId!,
+          subject: dto.subject,
+          description: dto.description,
+          isGroup,
+          startDate: new Date(dto.startDate),
+          endDate: new Date(dto.endDate),
+          status: OdStatus.PENDING_TUTOR,
+          currentLevel: ApprovalRole.TUTOR,
+        },
+        select: {
+          id: true,
+          subject: true,
+          description: true,
+          isGroup: true,
+          startDate: true,
+          endDate: true,
+          status: true,
+          currentLevel: true,
+          createdAt: true,
+        },
+      });
+
+      // Create participant records
+      await tx.odParticipant.createMany({
+        data: Array.from(participantStudentIds).map((sid) => ({
+          odRequestId: od.id,
+          studentId: sid,
+        })),
+      });
+
+      return od;
     });
 
     // Notify the batch tutor
@@ -103,12 +131,12 @@ export class OdService {
         userId: student.batch.tutorId,
         collegeId: currentUser.collegeId,
         title: 'New OD Request',
-        message: `Student submitted an OD request for "${dto.subject}"`,
+        message: `Student submitted ${isGroup ? 'a group' : 'an individual'} OD request for "${dto.subject}"`,
       });
     }
 
     this.logger.log(
-      `OD request ${odRequest.id} created by student ${currentUser.userId}`,
+      `OD request ${odRequest.id} created by student ${currentUser.userId} (group: ${isGroup}, participants: ${participantStudentIds.size})`,
     );
 
     return odRequest;
@@ -135,7 +163,13 @@ export class OdService {
           throw new NotFoundException('Student record not found');
         }
 
-        where = { studentId: student.id, collegeId: currentUser.collegeId };
+        where = {
+          OR: [
+            { studentId: student.id },
+            { participants: { some: { studentId: student.id } } },
+          ],
+          collegeId: currentUser.collegeId,
+        };
         // If student passes a status filter, apply it
         if (query.status) {
           where.status = query.status;
@@ -209,6 +243,9 @@ export class OdService {
           id: true,
           subject: true,
           description: true,
+          isGroup: true,
+          startDate: true,
+          endDate: true,
           status: true,
           currentLevel: true,
           createdAt: true,
@@ -218,7 +255,7 @@ export class OdService {
               user: { select: { name: true, email: true } },
             },
           },
-          batch: { select: { id: true, name: true } },
+          batch: { select: { id: true, name: true, currentSemester: true } },
           approvals: {
             select: {
               role: true,
@@ -228,6 +265,16 @@ export class OdService {
               approver: { select: { name: true } },
             },
             orderBy: { timestamp: 'asc' },
+          },
+          participants: {
+            select: {
+              student: {
+                select: {
+                  registerNumber: true,
+                  user: { select: { name: true } },
+                },
+              },
+            },
           },
         },
         orderBy: { createdAt: 'desc' },
