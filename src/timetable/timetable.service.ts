@@ -49,22 +49,48 @@ export class TimetableService {
       throw new NotFoundException('Batch not found in your college');
     }
 
+    // Pre-fetch staff assignments for the subjects included in the timetable
+    const subjectIds = dto.slots
+      .filter((s) => s.type === 'SUBJECT' && s.subjectId)
+      .map((s) => s.subjectId!);
+
+    let assignments: Record<string, string> = {};
+    if (subjectIds.length > 0) {
+      const dbAssignments = await this.prisma.subjectAssignment.findMany({
+        where: {
+          batchId: dto.batchId,
+          subjectId: { in: subjectIds },
+        },
+      });
+      dbAssignments.forEach((a) => {
+        assignments[a.subjectId] = a.staffId;
+      });
+    }
+
     // Transaction: delete existing slots for this batch and semester, then create new ones
     await this.prisma.$transaction([
       this.prisma.timetable.deleteMany({
         where: { batchId: dto.batchId, semester: dto.semester },
       }),
       this.prisma.timetable.createMany({
-        data: dto.slots.map((slot) => ({
-          batchId: dto.batchId,
-          semester: dto.semester,
-          day: slot.day,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          type: slot.type,
-          subjectId: slot.subjectId ?? null,
-          staffId: slot.staffId ?? null,
-        })),
+        data: dto.slots.map((slot) => {
+          let resolvedStaffId = slot.staffId ?? null;
+          
+          if (slot.type === 'SUBJECT' && slot.subjectId && !resolvedStaffId) {
+             resolvedStaffId = assignments[slot.subjectId] ?? null;
+          }
+
+          return {
+            batchId: dto.batchId,
+            semester: dto.semester,
+            day: slot.day,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            type: slot.type,
+            subjectId: slot.subjectId ?? null,
+            staffId: resolvedStaffId,
+          };
+        }),
       }),
     ]);
 
