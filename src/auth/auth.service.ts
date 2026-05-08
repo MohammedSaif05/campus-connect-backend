@@ -75,7 +75,10 @@ export class AuthService {
       endYear: true,
       currentSemester: true,
       isPassedOut: true,
-    } as const;
+      department: {
+        select: { id: true, name: true },
+      },
+    };
 
     let batch: {
       id: string;
@@ -84,6 +87,7 @@ export class AuthService {
       endYear: number;
       currentSemester: number;
       isPassedOut: boolean;
+      department?: { id: string; name: string };
     } | null = null;
 
     if (user.role === 'STAFF' && user.isTutor) {
@@ -103,9 +107,17 @@ export class AuthService {
     // Return token + user details (excluding password)
     const { password, ...userDetails } = user;
 
+    // If user's direct department is null (common for students), populate it from batch
+    if (!userDetails.department && batch && batch.department) {
+      userDetails.department = batch.department;
+    }
+
+    // Remove department from batch to keep payload clean
+    const { department: _dept, ...batchWithoutDept } = batch || {};
+
     return {
       accessToken: this.jwtService.sign(payload),
-      user: { ...userDetails, batch },
+      user: { ...userDetails, batch: batch ? batchWithoutDept : null },
     };
   }
 

@@ -107,6 +107,7 @@ export class StudentsService {
         password: dto.dob, // Will be hashed by UsersService
         role: Role.STUDENT,
         collegeId: currentUser.collegeId!,
+        departmentId: batch.departmentId,
         mustChangePassword: true,
       });
 
