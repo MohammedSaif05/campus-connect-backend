@@ -10,7 +10,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 
 @Controller('subjects')
-@Roles(Role.STAFF, Role.HOD)
+@Roles(Role.STAFF, Role.HOD, Role.STUDENT)
 export class SubjectsController {
   constructor(private readonly subjectsService: SubjectsService) {}
 
@@ -31,6 +31,7 @@ export class SubjectsController {
   }
 
   @Patch(':id')
+  @Roles(Role.STAFF, Role.HOD)
   update(
     @Param('id') id: string,
     @Body() dto: UpdateSubjectDto,
