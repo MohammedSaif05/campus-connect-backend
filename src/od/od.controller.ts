@@ -14,7 +14,7 @@ import { OdActionDto } from './dto/od-action.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { OdQueryDto } from './dto/od-query.dto.js';
 
 @Controller('od-requests')
 export class OdController {
@@ -32,7 +32,7 @@ export class OdController {
   @Get()
   findAll(
     @CurrentUser() user: JwtPayload,
-    @Query() query: PaginationQueryDto,
+    @Query() query: OdQueryDto,
   ) {
     return this.odService.findAll(user, query);
   }

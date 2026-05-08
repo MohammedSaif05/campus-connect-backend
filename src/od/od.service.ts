@@ -17,7 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { CreateOdRequestDto } from './dto/create-od-request.dto.js';
 import { OdActionDto } from './dto/od-action.dto.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto.js';
+import { OdQueryDto } from './dto/od-query.dto.js';
 import {
   getPrismaPageParams,
   paginatedResponse,
@@ -121,7 +121,7 @@ export class OdService {
    * - HOD: PENDING_HOD requests for their department
    * - SUPER_ADMIN: all requests
    */
-  async findAll(currentUser: JwtPayload, query: PaginationQueryDto) {
+  async findAll(currentUser: JwtPayload, query: OdQueryDto) {
     let where: any = {};
 
     switch (currentUser.role) {
@@ -136,6 +136,10 @@ export class OdService {
         }
 
         where = { studentId: student.id, collegeId: currentUser.collegeId };
+        // If student passes a status filter, apply it
+        if (query.status) {
+          where.status = query.status;
+        }
         break;
       }
 
@@ -155,12 +159,13 @@ export class OdService {
           select: { batchId: true },
         });
 
-        const batchIds = mappings.map((m) => m.batchId);
+        const tutorBatchIds = mappings.map((m) => m.batchId);
 
         where = {
-          batchId: { in: batchIds },
+          batchId: { in: tutorBatchIds },
           collegeId: currentUser.collegeId,
-          status: OdStatus.PENDING_TUTOR,
+          // Allow optional status override, default to PENDING_TUTOR
+          status: query.status ?? OdStatus.PENDING_TUTOR,
         };
         break;
       }
@@ -175,12 +180,13 @@ export class OdService {
           select: { id: true },
         });
 
-        const batchIds = batches.map((b) => b.id);
+        const hodBatchIds = batches.map((b) => b.id);
 
         where = {
-          batchId: { in: batchIds },
+          batchId: { in: hodBatchIds },
           collegeId: currentUser.collegeId,
-          status: OdStatus.PENDING_HOD,
+          // Allow optional status override, default to PENDING_HOD
+          status: query.status ?? OdStatus.PENDING_HOD,
         };
         break;
       }
@@ -188,6 +194,9 @@ export class OdService {
       case Role.SUPER_ADMIN: {
         // SUPER_ADMIN sees everything
         where = {};
+        if (query.status) {
+          where.status = query.status;
+        }
         break;
       }
     }
