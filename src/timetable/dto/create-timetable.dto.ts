@@ -2,9 +2,11 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Day, TimetableSlotType } from '@prisma/client';
@@ -40,9 +42,11 @@ export class CreateTimetableDto {
   @IsString()
   batchId: string;
 
-  @IsOptional()
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
   @Type(() => Number)
-  semester?: number;
+  semester: number;
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -1,7 +1,17 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { TimetableService } from './timetable.service.js';
 import { CreateTimetableDto } from './dto/create-timetable.dto.js';
+import { UpdateTimetableDto } from './dto/update-timetable.dto.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
@@ -19,10 +29,15 @@ export class TimetableController {
   @Get(':batchId')
   findByBatch(
     @Param('batchId') batchId: string,
-    @Query('semester') semester: string,
+    @Query('semester', ParseIntPipe) semester: number,
     @CurrentUser() user: JwtPayload,
   ) {
-    const semesterNum = semester ? parseInt(semester, 10) : undefined;
-    return this.timetableService.findByBatch(batchId, user, semesterNum);
+    return this.timetableService.findByBatch(batchId, user, semester);
+  }
+
+  @Patch()
+  @Roles(Role.STAFF)
+  update(@Body() dto: UpdateTimetableDto, @CurrentUser() user: JwtPayload) {
+    return this.timetableService.update(dto, user);
   }
 }

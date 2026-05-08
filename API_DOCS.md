@@ -1104,6 +1104,7 @@ Edits a subject's name, code, or semester. Subject code uniqueness is enforced p
 ```json
 {
   "batchId": "batch-uuid",
+  "semester": 3,
   "slots": [
     {
       "day": "MONDAY",
@@ -1129,9 +1130,12 @@ Edits a subject's name, code, or semester. Subject code uniqueness is enforced p
 }
 ```
 
+> **`semester`** *(required, integer ≥ 1)* — The semester this timetable belongs to. Each semester has its own independent timetable.
 > **Enums:** `day` = MONDAY | TUESDAY | WEDNESDAY | THURSDAY | FRIDAY | SATURDAY | SUNDAY
 > `type` = SUBJECT | BREAK | LUNCH
 > `subjectId` and `staffId` are required only when `type` = SUBJECT
+
+> **Note:** If a timetable already exists for the same `batchId` + `semester`, it will be fully replaced with the new slots.
 
 **Success Response (201):**
 ```json
@@ -1142,17 +1146,25 @@ Edits a subject's name, code, or semester. Subject code uniqueness is enforced p
 
 ---
 
-### GET `/timetable/:batchId`
+### GET `/timetable/:batchId?semester=3`
 
 > **Access:** Any authenticated user in the same college
+
+**Query Parameters:**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `semester` | number | **Yes** | Semester number to fetch the timetable for |
 
 **Success Response (200):**
 ```json
 {
   "batchId": "batch-uuid",
+  "semester": 3,
   "slots": [
     {
       "id": "slot-uuid",
+      "semester": 3,
       "day": "MONDAY",
       "startTime": "09:00",
       "endTime": "10:00",
@@ -1162,6 +1174,7 @@ Edits a subject's name, code, or semester. Subject code uniqueness is enforced p
     },
     {
       "id": "slot-uuid",
+      "semester": 3,
       "day": "MONDAY",
       "startTime": "10:00",
       "endTime": "10:15",
@@ -1170,6 +1183,62 @@ Edits a subject's name, code, or semester. Subject code uniqueness is enforced p
       "staff": null
     }
   ]
+}
+```
+
+**Error Response (400) — missing semester:**
+```json
+{
+  "message": "Validation failed (numeric string is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+---
+
+### PATCH `/timetable`
+
+> **Access:** STAFF with `isTutor = true` (must be tutor of the batch)
+> **Purpose:** Edit specific timetable slots without replacing the entire timetable. Each slot to update must include its `id`.
+
+**Request Body:**
+```json
+{
+  "batchId": "batch-uuid",
+  "semester": 3,
+  "slots": [
+    {
+      "id": "slot-uuid-1",
+      "startTime": "09:30",
+      "endTime": "10:30"
+    },
+    {
+      "id": "slot-uuid-2",
+      "type": "SUBJECT",
+      "subjectId": "new-subject-uuid",
+      "staffId": "new-staff-uuid"
+    }
+  ]
+}
+```
+
+> **Fields per slot:** All fields except `id` are optional — send only the fields you want to change.
+> To clear `subjectId` or `staffId` (e.g., changing type from SUBJECT to BREAK), send `null` explicitly.
+
+**Success Response (200):**
+```json
+{
+  "message": "Timetable slots updated successfully"
+}
+```
+
+**Error Response (400) — slot not found:**
+```json
+{
+  "message": "Slot(s) not found in this batch/semester: slot-uuid-1, slot-uuid-2",
+  "error": "Bad Request",
+  "statusCode": 400
 }
 ```
 
@@ -1502,6 +1571,7 @@ Any other transition → `400 Bad Request`
 | POST /students | ❌ | ❌ | ✅ (tutor) | ❌ |
 | POST /subjects | ❌ | ❌ | ✅ | ❌ |
 | POST /timetable | ❌ | ❌ | ✅ (tutor) | ❌ |
+| PATCH /timetable | ❌ | ❌ | ✅ (tutor) | ❌ |
 | POST /od-requests | ❌ | ❌ | ❌ | ✅ |
 | GET /od-requests | ✅ | ✅ | ✅ (tutor) | ✅ |
 | PATCH /od-requests/:id/approve | ❌ | ✅ | ✅ (tutor) | ❌ |
