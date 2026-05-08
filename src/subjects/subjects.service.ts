@@ -86,6 +86,12 @@ export class SubjectsService {
           subjectCode: true,
           departmentId: true,
           semester: true,
+          assignments: {
+            select: {
+              batchId: true,
+              staff: { select: { name: true } },
+            },
+          },
         },
         orderBy: [{ semester: 'asc' }, { name: 'asc' }],
       }),
