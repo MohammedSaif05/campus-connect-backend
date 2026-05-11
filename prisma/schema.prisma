@@ -83,6 +83,7 @@ model College {
   students      Student[]
   notifications Notification[]
   odRequests    OdRequest[]
+  hackathons    Hackathon[]
 
   @@map("colleges")
 }
@@ -95,8 +96,9 @@ model Department {
   // Relations
   college  College   @relation(fields: [collegeId], references: [id])
   users    User[]
-  batches  Batch[]
-  subjects Subject[]
+  batches    Batch[]
+  subjects   Subject[]
+  hackathons Hackathon[]
 
   @@index([collegeId])
   @@map("departments")
@@ -125,6 +127,7 @@ model User {
   odApprovals        OdApproval[]
   notifications      Notification[]
   timetableSlots     Timetable[]
+  createdHackathons  Hackathon[]         @relation("HackathonCreator")
 
   @@unique([collegeId, email])
   @@index([collegeId])
@@ -143,8 +146,10 @@ model Student {
   user             User            @relation(fields: [userId], references: [id])
   college          College         @relation(fields: [collegeId], references: [id])
   batch            Batch           @relation(fields: [batchId], references: [id])
-  odRequests       OdRequest[]
-  odParticipations OdParticipant[]
+  odRequests              OdRequest[]
+  odParticipations        OdParticipant[]
+  ledHackathonTeams       HackathonTeam[]       @relation("TeamLeader")
+  hackathonParticipations HackathonTeamMember[]
 
   @@unique([collegeId, registerNumber])
   @@index([collegeId])
@@ -325,4 +330,86 @@ model Notification {
   @@index([userId])
   @@index([collegeId])
   @@map("notifications")
+}
+
+// ============================================================================
+// Hackathon Models
+// ============================================================================
+
+model Hackathon {
+  id                   String   @id @default(uuid())
+  collegeId            String   @map("college_id")
+  departmentId         String   @map("department_id")
+  name                 String
+  description          String
+  isGroup              Boolean  @default(false) @map("is_group")
+  minSize              Int?     @map("min_size")
+  maxSize              Int?     @map("max_size")
+  thumbnailUrl         String?  @map("thumbnail_url")
+  registrationDeadline DateTime @map("registration_deadline")
+  hackathonDate        DateTime @map("hackathon_date")
+  createdById          String   @map("created_by_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  college      College         @relation(fields: [collegeId], references: [id])
+  department   Department      @relation(fields: [departmentId], references: [id])
+  createdBy    User            @relation("HackathonCreator", fields: [createdById], references: [id])
+  teams        HackathonTeam[]
+
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("hackathons")
+}
+
+model HackathonTeam {
+  id              String   @id @default(uuid())
+  hackathonId     String   @map("hackathon_id")
+  leaderId        String   @map("leader_id")
+  teamName        String?  @map("team_name")
+  ideaTitle       String   @map("idea_title")
+  ideaDescription String   @map("idea_description")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  hackathon Hackathon             @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  leader    Student               @relation("TeamLeader", fields: [leaderId], references: [id])
+  members   HackathonTeamMember[]
+  progress  HackathonProgress[]
+
+  @@index([hackathonId])
+  @@index([leaderId])
+  @@map("hackathon_teams")
+}
+
+model HackathonTeamMember {
+  id          String   @id @default(uuid())
+  teamId      String   @map("team_id")
+  studentId   String   @map("student_id")
+  hackathonId String   @map("hackathon_id")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  team      HackathonTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  student   Student       @relation(fields: [studentId], references: [id])
+
+  @@unique([hackathonId, studentId])
+  @@index([teamId])
+  @@index([studentId])
+  @@map("hackathon_team_members")
+}
+
+model HackathonProgress {
+  id          String   @id @default(uuid())
+  teamId      String   @map("team_id")
+  description String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  team HackathonTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@map("hackathon_progress")
 }

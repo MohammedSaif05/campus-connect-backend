@@ -1603,3 +1603,245 @@ POST /auth/login  →  { "collegeCode": "MYCODE", "email": "hod@...", "password"
 # 8. Login as student, create OD requests...
 # 9. Login as tutor, approve OD → Login as HOD, approve OD → DONE!
 ```
+
+---
+
+## 🏆 Hackathons
+
+### POST `/hackathons`
+> **Access:** `HOD`
+
+Creates a new hackathon. This endpoint uses `multipart/form-data` to handle thumbnail image uploads to Cloudflare R2.
+
+**Request Body (multipart/form-data):**
+- `name` (string)
+- `description` (string)
+- `isGroup` (boolean - send as "true" or "false")
+- `minSize` (integer, required if `isGroup` is true)
+- `maxSize` (integer, required if `isGroup` is true)
+- `registrationDeadline` (string, ISO DateTime)
+- `hackathonDate` (string, ISO DateTime)
+- `thumbnail` (file, optional, max 5MB, png/jpg/jpeg/webp)
+
+**Success Response (201):**
+```json
+{
+  "id": "uuid-here",
+  "collegeId": "college-uuid",
+  "departmentId": "dept-uuid",
+  "name": "Spring Hack 2026",
+  "description": "Annual 24-hour coding sprint.",
+  "isGroup": true,
+  "minSize": 2,
+  "maxSize": 4,
+  "thumbnailUrl": "https://pub-xxxxxx.r2.dev/hackathons/college-uuid/uuid-here/thumbnail.png",
+  "registrationDeadline": "2026-06-01T00:00:00.000Z",
+  "hackathonDate": "2026-06-15T00:00:00.000Z",
+  "createdById": "hod-uuid",
+  "createdAt": "2026-05-11T13:30:00.000Z",
+  "updatedAt": "2026-05-11T13:30:00.000Z"
+}
+```
+
+---
+
+### GET `/hackathons`
+> **Access:** `HOD`, `STAFF`, `STUDENT`
+
+Retrieves a list of all hackathons within the user's department, sorted by newest first.
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": "uuid-here",
+    "name": "Spring Hack 2026",
+    "description": "Annual 24-hour coding sprint.",
+    "isGroup": true,
+    "minSize": 2,
+    "maxSize": 4,
+    "thumbnailUrl": "https://...",
+    "registrationDeadline": "2026-06-01T00:00:00.000Z",
+    "hackathonDate": "2026-06-15T00:00:00.000Z",
+    "_count": {
+      "teams": 12
+    }
+  }
+]
+```
+
+---
+
+### GET `/hackathons/:id`
+> **Access:** `HOD`, `STAFF`, `STUDENT`
+
+Retrieves full details of a specific hackathon.
+
+**Success Response (200):**
+```json
+{
+  "id": "uuid-here",
+  "name": "Spring Hack 2026",
+  "description": "Annual 24-hour coding sprint.",
+  "isGroup": true,
+  "minSize": 2,
+  "maxSize": 4,
+  "thumbnailUrl": "https://...",
+  "registrationDeadline": "2026-06-01T00:00:00.000Z",
+  "hackathonDate": "2026-06-15T00:00:00.000Z",
+  "createdBy": {
+    "id": "user-uuid",
+    "name": "Dr. Ramesh Kumar",
+    "role": "HOD"
+  }
+}
+```
+
+---
+
+### POST `/hackathons/:id/register`
+> **Access:** `STUDENT`
+
+Registers a team (or solo participant) for a hackathon. The student initiating the request is automatically set as the Team Leader.
+
+**Request Body (JSON):**
+```json
+{
+  "teamName": "Byte Benders",
+  "ideaTitle": "AI Attendance Tracker",
+  "ideaDescription": "Using facial recognition to automate classroom attendance.",
+  "memberIds": [
+    "student-uuid-1",
+    "student-uuid-2"
+  ]
+}
+```
+
+**Validation Rules:**
+- The deadline must not be passed.
+- `memberIds` array must only contain students from the same department.
+- If `isGroup` is true, the total member count (Leader + `memberIds`) must be between `minSize` and `maxSize`.
+- If `isGroup` is false, `memberIds` must be empty (only the leader).
+- None of the members (including the leader) can already be registered for this hackathon.
+
+**Success Response (201):**
+```json
+{
+  "id": "team-uuid",
+  "hackathonId": "hackathon-uuid",
+  "leaderId": "leader-student-uuid",
+  "teamName": "Byte Benders",
+  "ideaTitle": "AI Attendance Tracker",
+  "ideaDescription": "Using facial recognition...",
+  "createdAt": "2026-05-11T13:30:00.000Z",
+  "members": [
+    {
+      "id": "member-uuid",
+      "teamId": "team-uuid",
+      "studentId": "leader-student-uuid",
+      "hackathonId": "hackathon-uuid",
+      "joinedAt": "2026-05-11T13:30:00.000Z",
+      "student": {
+        "id": "leader-student-uuid",
+        "registerNumber": "S1001",
+        "user": { "name": "Alice" }
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET `/hackathons/:id/teams`
+> **Access:** `HOD`, `STAFF` (Tutors)
+
+Lists all teams registered for a specific hackathon.
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": "team-uuid",
+    "hackathonId": "hackathon-uuid",
+    "leaderId": "leader-student-uuid",
+    "teamName": "Byte Benders",
+    "ideaTitle": "AI Attendance Tracker",
+    "ideaDescription": "Using facial recognition...",
+    "createdAt": "2026-05-11T13:30:00.000Z",
+    "leader": {
+      "registerNumber": "S1001",
+      "user": { "name": "Alice" }
+    },
+    "_count": {
+      "members": 3
+    }
+  }
+]
+```
+
+---
+
+### GET `/hackathons/teams/:teamId`
+> **Access:** `HOD`, `STAFF`, `STUDENT`
+
+Retrieves complete details of a registered team, including all members and their chronological progress updates.
+
+**Success Response (200):**
+```json
+{
+  "id": "team-uuid",
+  "teamName": "Byte Benders",
+  "ideaTitle": "AI Attendance Tracker",
+  "ideaDescription": "Using facial recognition...",
+  "leader": {
+    "registerNumber": "S1001",
+    "user": { "name": "Alice" }
+  },
+  "members": [
+    {
+      "student": {
+        "id": "student-uuid",
+        "registerNumber": "S1001",
+        "user": { "name": "Alice" },
+        "batch": { "name": "CSE B" }
+      }
+    }
+  ],
+  "progress": [
+    {
+      "id": "progress-uuid",
+      "teamId": "team-uuid",
+      "description": "Completed frontend UI mocks.",
+      "date": "2026-06-05T10:00:00.000Z",
+      "createdAt": "2026-06-05T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### POST `/hackathons/teams/:teamId/progress`
+> **Access:** `STUDENT`
+
+Allows a team member to submit a progress update. The backend verifies that the requesting student is a registered member of this team.
+
+**Request Body:**
+```json
+{
+  "description": "Integrated facial recognition API with backend.",
+  "date": "2026-06-06T10:00:00.000Z"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "id": "progress-uuid",
+  "teamId": "team-uuid",
+  "description": "Integrated facial recognition API with backend.",
+  "date": "2026-06-06T10:00:00.000Z",
+  "createdAt": "2026-06-06T10:05:00.000Z"
+}
+```

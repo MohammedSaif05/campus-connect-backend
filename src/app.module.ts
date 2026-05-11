@@ -21,6 +21,8 @@ import { OdModule } from './od/od.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { BulkUploadModule } from './bulk-upload/bulk-upload.module.js';
 import { HealthModule } from './health/health.module.js';
+import { StorageModule } from './storage/storage.module.js';
+import { HackathonsModule } from './hackathons/hackathons.module.js';
 
 @Module({
   imports: [
@@ -46,6 +48,12 @@ import { HealthModule } from './health/health.module.js';
     // OD workflow
     OdModule,
     NotificationsModule,
+
+    // Storage
+    StorageModule,
+
+    // Hackathons
+    HackathonsModule,
 
     // Utilities
     BulkUploadModule,
