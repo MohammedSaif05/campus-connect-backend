@@ -193,6 +193,31 @@ export class HackathonsService {
     });
   }
 
+  async getMyTeams(user: JwtPayload) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId: user.userId },
+    });
+
+    if (!student) throw new ForbiddenException('Only students can fetch their teams');
+
+    return this.prisma.hackathonTeam.findMany({
+      where: {
+        members: {
+          some: { studentId: student.id },
+        },
+      },
+      include: {
+        hackathon: {
+          select: { name: true, hackathonDate: true, thumbnailUrl: true },
+        },
+        leader: {
+          select: { user: { select: { name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async getTeamDetails(teamId: string, user: JwtPayload) {
     const team = await this.prisma.hackathonTeam.findUnique({
       where: { id: teamId },

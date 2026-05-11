@@ -61,6 +61,12 @@ export class HackathonsController {
     return this.hackathonsService.getHackathonTeams(id, user);
   }
 
+  @Get('student/my-teams')
+  @Roles(Role.STUDENT)
+  getMyTeams(@CurrentUser() user: JwtPayload) {
+    return this.hackathonsService.getMyTeams(user);
+  }
+
   @Get('teams/:teamId')
   @Roles(Role.HOD, Role.STAFF, Role.STUDENT)
   getTeamDetails(@Param('teamId') teamId: string, @CurrentUser() user: JwtPayload) {
