@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import * as crypto from 'crypto';
 import * as path from 'path';
 
@@ -62,11 +62,41 @@ export class StorageService {
         return `${baseUrl}${key}`;
       }
       
-      // Fallback relative path if no public URL
       return `/${key}`;
     } catch (error) {
       this.logger.error(`Failed to upload file to R2: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to upload file');
+    }
+  }
+
+  /**
+   * Deletes a file from Cloudflare R2 given its public URL or key.
+   */
+  async deleteFile(fileUrl: string): Promise<void> {
+    try {
+      if (!fileUrl) return;
+      
+      let key = fileUrl;
+      
+      // If the URL contains the public URL base, strip it
+      if (this.publicUrl && fileUrl.startsWith(this.publicUrl)) {
+        key = fileUrl.substring(this.publicUrl.length);
+      }
+      
+      // Ensure no leading slash in the key
+      if (key.startsWith('/')) {
+        key = key.substring(1);
+      }
+
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+    } catch (error) {
+      this.logger.error(`Failed to delete file from R2: ${error.message}`, error.stack);
+      // We log but don't throw, to prevent blocking other operations if deletion fails
     }
   }
 }

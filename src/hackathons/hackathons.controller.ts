@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, Query } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Param, Body, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
 import { HackathonsService } from './hackathons.service.js';
@@ -6,6 +6,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 import { CreateHackathonDto } from './dto/create-hackathon.dto.js';
+import { UpdateHackathonDto } from './dto/update-hackathon.dto.js';
 import { RegisterTeamDto } from './dto/register-team.dto.js';
 import { AddProgressDto } from './dto/add-progress.dto.js';
 
@@ -69,6 +70,33 @@ export class HackathonsController {
   @Roles(Role.HOD, Role.STAFF, Role.STUDENT)
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.hackathonsService.findOne(id, user);
+  }
+
+  @Patch(':id')
+  @Roles(Role.HOD)
+  @UseInterceptors(FileInterceptor('thumbnail'))
+  updateHackathon(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateHackathonDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    return this.hackathonsService.updateHackathon(id, user, dto, file);
+  }
+
+  @Delete(':id')
+  @Roles(Role.HOD)
+  deleteHackathon(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.hackathonsService.deleteHackathon(id, user);
   }
 
   @Post(':id/register')

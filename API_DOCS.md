@@ -1894,3 +1894,44 @@ Retrieves active students for a specific batch with pagination.
   "hasMore": true
 }
 ```
+
+---
+
+### PATCH `/hackathons/:id`
+> **Access:** `HOD`
+
+Updates an existing hackathon. Only the creator (HOD) can update it. `isGroup`, `minSize`, and `maxSize` cannot be changed. If a new `thumbnail` is provided, the old one is deleted from R2.
+
+**Request Body (`multipart/form-data`):**
+- `name` (optional string)
+- `description` (optional string)
+- `registrationDeadline` (optional ISO DateTime)
+- `hackathonDate` (optional ISO DateTime)
+- `thumbnail` (optional file - JPG, PNG, WEBP, max 5MB)
+
+**Success Response (200):**
+```json
+{
+  "id": "hackathon-uuid",
+  "name": "Updated Appathon 2026",
+  "description": "Updated Description...",
+  "thumbnailUrl": "https://pub-....r2.dev/hackathons/college-id/hackathon-uuid/new-uuid.jpg",
+  "registrationDeadline": "2026-06-01T23:59:59.000Z",
+  "hackathonDate": "2026-06-15T09:00:00.000Z",
+  "updatedAt": "2026-05-12T10:00:00.000Z"
+}
+```
+
+---
+
+### DELETE `/hackathons/:id`
+> **Access:** `HOD`
+
+Deletes a hackathon. Only the creator (HOD) can delete it. Automatically deletes the associated thumbnail from R2 and cascades deletion to all registered teams and progress.
+
+**Success Response (200):**
+```json
+{
+  "message": "Hackathon deleted successfully"
+}
+```

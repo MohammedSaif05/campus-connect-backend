@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { JwtPayload } from '../common/interfaces/jwt-payload.interface.js';
 import { CreateHackathonDto } from './dto/create-hackathon.dto.js';
+import { UpdateHackathonDto } from './dto/update-hackathon.dto.js';
 import { RegisterTeamDto } from './dto/register-team.dto.js';
 import { AddProgressDto } from './dto/add-progress.dto.js';
 
@@ -55,6 +56,84 @@ export class HackathonsService {
     }
 
     return { ...hackathon, thumbnailUrl };
+  }
+
+  async updateHackathon(
+    id: string,
+    user: JwtPayload,
+    dto: UpdateHackathonDto,
+    file?: Express.Multer.File,
+  ) {
+    if (!user.departmentId) {
+      throw new ForbiddenException('HOD must belong to a department');
+    }
+
+    const existing = await this.prisma.hackathon.findUnique({
+      where: { id, collegeId: user.collegeId! },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Hackathon not found');
+    }
+
+    if (existing.createdById !== user.userId) {
+      throw new ForbiddenException('You can only edit hackathons you created');
+    }
+
+    let thumbnailUrl = existing.thumbnailUrl;
+
+    if (file) {
+      // Delete old thumbnail if exists
+      if (thumbnailUrl) {
+        await this.storage.deleteFile(thumbnailUrl);
+      }
+
+      // Upload new thumbnail
+      const folderPath = `hackathons/${user.collegeId}/${id}`;
+      thumbnailUrl = await this.storage.uploadFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        folderPath,
+      );
+    }
+
+    return this.prisma.hackathon.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        description: dto.description,
+        registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : undefined,
+        hackathonDate: dto.hackathonDate ? new Date(dto.hackathonDate) : undefined,
+        thumbnailUrl,
+      },
+    });
+  }
+
+  async deleteHackathon(id: string, user: JwtPayload) {
+    const existing = await this.prisma.hackathon.findUnique({
+      where: { id, collegeId: user.collegeId! },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Hackathon not found');
+    }
+
+    if (existing.createdById !== user.userId) {
+      throw new ForbiddenException('You can only delete hackathons you created');
+    }
+
+    // Delete thumbnail from R2 if exists
+    if (existing.thumbnailUrl) {
+      await this.storage.deleteFile(existing.thumbnailUrl);
+    }
+
+    // Prisma Cascade handles related records (teams, members, progress)
+    await this.prisma.hackathon.delete({
+      where: { id },
+    });
+
+    return { message: 'Hackathon deleted successfully' };
   }
 
   async findAll(user: JwtPayload) {
