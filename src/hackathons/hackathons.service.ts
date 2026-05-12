@@ -90,6 +90,38 @@ export class HackathonsService {
     return hackathon;
   }
 
+  async getDepartmentStudents(user: JwtPayload) {
+    if (!user.departmentId) {
+      throw new BadRequestException('User must belong to a department');
+    }
+
+    const batches = await this.prisma.batch.findMany({
+      where: {
+        departmentId: user.departmentId,
+        isPassedOut: false,
+      },
+      select: {
+        id: true,
+        name: true,
+        currentSemester: true,
+        students: {
+          where: {
+            user: { isActive: true },
+          },
+          select: {
+            id: true,
+            registerNumber: true,
+            user: { select: { id: true, name: true } },
+          },
+          orderBy: { registerNumber: 'asc' },
+        },
+      },
+      orderBy: { startYear: 'desc' },
+    });
+
+    return batches;
+  }
+
   async registerTeam(
     id: string,
     user: JwtPayload,

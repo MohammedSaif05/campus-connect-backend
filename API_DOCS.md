@@ -1845,3 +1845,31 @@ Allows a team member to submit a progress update. The backend verifies that the 
   "createdAt": "2026-06-06T10:05:00.000Z"
 }
 ```
+
+---
+
+### GET `/hackathons/department-students`
+> **Access:** `STUDENT`
+
+Retrieves all active batches and their active students for the current user's department. Used by students to select team members for group hackathons.
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": "batch-uuid",
+    "name": "B.Tech CSE 2024",
+    "currentSemester": 1,
+    "students": [
+      {
+        "id": "student-uuid",
+        "registerNumber": "12345678",
+        "user": {
+          "id": "user-uuid",
+          "name": "John Doe"
+        }
+      }
+    ]
+  }
+]
+```
