@@ -101,6 +101,100 @@
 
 ---
 
+## 👤 User Profile
+
+### GET `/users/me`
+
+> **Access:** Any authenticated user
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Success Response (200):**
+```json
+{
+  "id": "uuid-here",
+  "name": "Dr. Ramesh Kumar",
+  "email": "ramesh@abcengg.edu",
+  "role": "HOD",
+  "isTutor": false,
+  "departmentId": "dept-uuid",
+  "isActive": true,
+  "profileImageUrl": "https://r2.campusconnect.com/profiles/uuid-here.jpg",
+  "phoneNumber": "9876543210",
+  "bio": "Head of Computer Science Department",
+  "department": {
+    "id": "dept-uuid",
+    "name": "Computer Science"
+  },
+  "college": {
+    "id": "college-uuid",
+    "name": "ABC Engineering College"
+  }
+}
+```
+
+---
+
+### PATCH `/users/me`
+
+> **Access:** Any authenticated user
+> **Content-Type:** `multipart/form-data`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request Body (FormData):**
+- `name` (string, optional)
+- `phoneNumber` (string, optional)
+- `bio` (string, optional)
+- `file` (file, optional) - Profile picture image
+
+**Success Response (200):**
+```json
+{
+  "id": "uuid-here",
+  "name": "Dr. Ramesh Kumar Updated",
+  "email": "ramesh@abcengg.edu",
+  "role": "HOD",
+  "profileImageUrl": "https://r2.campusconnect.com/profiles/uuid-here.jpg",
+  "phoneNumber": "9876543210",
+  "bio": "Head of Computer Science Department"
+}
+```
+
+---
+
+### PATCH `/users/me/password`
+
+> **Access:** Any authenticated user
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request Body:**
+```json
+{
+  "currentPassword": "OldPassword123",
+  "newPassword": "NewSecurePassword456"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+**Error Response (400):**
+```json
+{
+  "message": "Incorrect current password",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+---
+
 ## 🏫 Colleges
 
 ### POST `/colleges`

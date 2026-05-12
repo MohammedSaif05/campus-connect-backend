@@ -117,6 +117,9 @@ model User {
   departmentId       String?  @map("department_id")
   isActive           Boolean  @default(true) @map("is_active")
   mustChangePassword Boolean  @default(false) @map("must_change_password")
+  profileImageUrl    String?  @map("profile_image_url")
+  phoneNumber        String?  @map("phone_number")
+  bio                String?
   createdAt          DateTime @default(now()) @map("created_at")
 
   // Relations
