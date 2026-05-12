@@ -84,6 +84,7 @@ model College {
   notifications Notification[]
   odRequests    OdRequest[]
   hackathons    Hackathon[]
+  events        Event[]
 
   @@map("colleges")
 }
@@ -94,11 +95,12 @@ model Department {
   name      String
 
   // Relations
-  college  College   @relation(fields: [collegeId], references: [id])
-  users    User[]
+  college    College     @relation(fields: [collegeId], references: [id])
+  users      User[]
   batches    Batch[]
   subjects   Subject[]
   hackathons Hackathon[]
+  events     Event[]
 
   @@index([collegeId])
   @@map("departments")
@@ -128,6 +130,7 @@ model User {
   notifications      Notification[]
   timetableSlots     Timetable[]
   createdHackathons  Hackathon[]         @relation("HackathonCreator")
+  createdEvents      Event[]             @relation("EventCreator")
 
   @@unique([collegeId, email])
   @@index([collegeId])
@@ -143,9 +146,9 @@ model Student {
   batchId        String @map("batch_id")
 
   // Relations
-  user             User            @relation(fields: [userId], references: [id])
-  college          College         @relation(fields: [collegeId], references: [id])
-  batch            Batch           @relation(fields: [batchId], references: [id])
+  user                    User                  @relation(fields: [userId], references: [id])
+  college                 College               @relation(fields: [collegeId], references: [id])
+  batch                   Batch                 @relation(fields: [batchId], references: [id])
   odRequests              OdRequest[]
   odParticipations        OdParticipant[]
   ledHackathonTeams       HackathonTeam[]       @relation("TeamLeader")
@@ -353,10 +356,10 @@ model Hackathon {
   updatedAt            DateTime @updatedAt @map("updated_at")
 
   // Relations
-  college      College         @relation(fields: [collegeId], references: [id])
-  department   Department      @relation(fields: [departmentId], references: [id])
-  createdBy    User            @relation("HackathonCreator", fields: [createdById], references: [id])
-  teams        HackathonTeam[]
+  college    College         @relation(fields: [collegeId], references: [id])
+  department Department      @relation(fields: [departmentId], references: [id])
+  createdBy  User            @relation("HackathonCreator", fields: [createdById], references: [id])
+  teams      HackathonTeam[]
 
   @@index([collegeId])
   @@index([departmentId])
@@ -391,8 +394,8 @@ model HackathonTeamMember {
   joinedAt    DateTime @default(now()) @map("joined_at")
 
   // Relations
-  team      HackathonTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  student   Student       @relation(fields: [studentId], references: [id])
+  team    HackathonTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id])
 
   @@unique([hackathonId, studentId])
   @@index([teamId])
@@ -412,4 +415,27 @@ model HackathonProgress {
 
   @@index([teamId])
   @@map("hackathon_progress")
+}
+
+model Event {
+  id           String   @id @default(uuid())
+  collegeId    String   @map("college_id")
+  departmentId String   @map("department_id")
+  name         String
+  description  String
+  thumbnailUrl String?  @map("thumbnail_url")
+  startDate    DateTime @map("start_date")
+  endDate      DateTime @map("end_date")
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  college    College    @relation(fields: [collegeId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+  createdBy  User       @relation("EventCreator", fields: [createdById], references: [id])
+
+  @@index([collegeId])
+  @@index([departmentId])
+  @@map("events")
 }

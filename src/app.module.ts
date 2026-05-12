@@ -23,6 +23,7 @@ import { BulkUploadModule } from './bulk-upload/bulk-upload.module.js';
 import { HealthModule } from './health/health.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { HackathonsModule } from './hackathons/hackathons.module.js';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -60,6 +61,8 @@ import { HackathonsModule } from './hackathons/hackathons.module.js';
 
     // Health check & self-ping (keeps Render awake)
     HealthModule,
+
+    EventsModule,
   ],
   providers: [
     // Global JWT guard — all routes require auth unless @Public()

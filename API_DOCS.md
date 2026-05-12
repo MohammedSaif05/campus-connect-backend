@@ -1935,3 +1935,64 @@ Deletes a hackathon. Only the creator (HOD) can delete it. Automatically deletes
   "message": "Hackathon deleted successfully"
 }
 ```
+
+---
+
+## Events (HOD, Tutor, Student)
+
+Endpoints for managing and viewing college-wide events.
+
+### 1. Create Event
+- **Endpoint:** `POST /api/v1/events`
+- **Roles:** `HOD`
+- **Content-Type:** `multipart/form-data`
+- **Payload:**
+  - `name` (string)
+  - `description` (string)
+  - `startDate` (ISO 8601 string)
+  - `endDate` (ISO 8601 string)
+  - `thumbnail` (file, optional) - Max 5MB, JPG/PNG/WEBP.
+- **Response (201):**
+  ```json
+  {
+    "id": "uuid",
+    "collegeId": "uuid",
+    "departmentId": "uuid",
+    "name": "Event Name",
+    "description": "Event Description",
+    "thumbnailUrl": "https://pub-....r2.dev/events/...",
+    "startDate": "2024-03-20T10:00:00.000Z",
+    "endDate": "2024-03-21T18:00:00.000Z",
+    "createdById": "uuid",
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+  ```
+
+### 2. Get All Events
+- **Endpoint:** `GET /api/v1/events`
+- **Roles:** `HOD`, `STAFF`, `STUDENT`
+- **Description:** Returns all events visible to the college.
+- **Response (200):** Array of event objects (includes `department: { name }`).
+
+### 3. Get Event Details
+- **Endpoint:** `GET /api/v1/events/:id`
+- **Roles:** `HOD`, `STAFF`, `STUDENT`
+- **Response (200):** Event details.
+
+### 4. Update Event
+- **Endpoint:** `PATCH /api/v1/events/:id`
+- **Roles:** `HOD`
+- **Content-Type:** `multipart/form-data`
+- **Payload:** Same as create, all optional.
+- **Response (200):** Updated event details.
+
+### 5. Delete Event
+- **Endpoint:** `DELETE /api/v1/events/:id`
+- **Roles:** `HOD`
+- **Response (200):**
+  ```json
+  {
+    "message": "Event deleted successfully"
+  }
+  ```
