@@ -104,6 +104,10 @@ export class AuthService {
       batch = studentRecord?.batch ?? null;
     }
 
+    if (!payload.departmentId && batch && batch.department) {
+      payload.departmentId = batch.department.id;
+    }
+
     // Return token + user details (excluding password)
     const { password, ...userDetails } = user;
 
