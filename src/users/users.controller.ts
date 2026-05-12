@@ -13,7 +13,7 @@ export class UsersController {
 
   @Get('me')
   async getProfile(@CurrentUser() user: any) {
-    return this.usersService.findById(user.id);
+    return this.usersService.findById(user.userId);
   }
 
   @Patch('me')
@@ -23,7 +23,7 @@ export class UsersController {
     @Body() updateProfileDto: UpdateProfileDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.usersService.updateProfile(user.id, updateProfileDto, file);
+    return this.usersService.updateProfile(user.userId, updateProfileDto, file);
   }
 
   @Patch('me/password')
@@ -32,7 +32,7 @@ export class UsersController {
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
     return this.usersService.changePassword(
-      user.id,
+      user.userId,
       changePasswordDto.currentPassword,
       changePasswordDto.newPassword,
     );
