@@ -39,6 +39,18 @@ export class HackathonsController {
     return this.hackathonsService.findAll(user);
   }
 
+  @Get('department-students')
+  @Roles(Role.STUDENT)
+  getDepartmentStudents(@CurrentUser() user: JwtPayload) {
+    return this.hackathonsService.getDepartmentStudents(user);
+  }
+
+  @Get('student/my-teams')
+  @Roles(Role.STUDENT)
+  getMyTeams(@CurrentUser() user: JwtPayload) {
+    return this.hackathonsService.getMyTeams(user);
+  }
+
   @Get(':id')
   @Roles(Role.HOD, Role.STAFF, Role.STUDENT)
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
@@ -61,17 +73,6 @@ export class HackathonsController {
     return this.hackathonsService.getHackathonTeams(id, user);
   }
 
-  @Get('department-students')
-  @Roles(Role.STUDENT)
-  getDepartmentStudents(@CurrentUser() user: JwtPayload) {
-    return this.hackathonsService.getDepartmentStudents(user);
-  }
-
-  @Get('student/my-teams')
-  @Roles(Role.STUDENT)
-  getMyTeams(@CurrentUser() user: JwtPayload) {
-    return this.hackathonsService.getMyTeams(user);
-  }
 
   @Get('teams/:teamId')
   @Roles(Role.HOD, Role.STAFF, Role.STUDENT)
