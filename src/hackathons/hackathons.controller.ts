@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
 import { HackathonsService } from './hackathons.service.js';
@@ -39,10 +39,24 @@ export class HackathonsController {
     return this.hackathonsService.findAll(user);
   }
 
-  @Get('department-students')
+  @Get('department-batches')
   @Roles(Role.STUDENT)
-  getDepartmentStudents(@CurrentUser() user: JwtPayload) {
-    return this.hackathonsService.getDepartmentStudents(user);
+  getDepartmentBatches(@CurrentUser() user: JwtPayload) {
+    return this.hackathonsService.getDepartmentBatches(user);
+  }
+
+  @Get('batches/:batchId/students')
+  @Roles(Role.STUDENT)
+  getBatchStudents(
+    @Param('batchId') batchId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    return this.hackathonsService.getBatchStudents(
+      batchId,
+      parseInt(page, 10) || 1,
+      parseInt(limit, 10) || 20,
+    );
   }
 
   @Get('student/my-teams')

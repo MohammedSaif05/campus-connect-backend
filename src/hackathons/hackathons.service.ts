@@ -90,12 +90,12 @@ export class HackathonsService {
     return hackathon;
   }
 
-  async getDepartmentStudents(user: JwtPayload) {
+  async getDepartmentBatches(user: JwtPayload) {
     if (!user.departmentId) {
       throw new BadRequestException('User must belong to a department');
     }
 
-    const batches = await this.prisma.batch.findMany({
+    return this.prisma.batch.findMany({
       where: {
         departmentId: user.departmentId,
         isPassedOut: false,
@@ -104,22 +104,44 @@ export class HackathonsService {
         id: true,
         name: true,
         currentSemester: true,
-        students: {
-          where: {
-            user: { isActive: true },
-          },
-          select: {
-            id: true,
-            registerNumber: true,
-            user: { select: { id: true, name: true } },
-          },
-          orderBy: { registerNumber: 'asc' },
-        },
       },
       orderBy: { startYear: 'desc' },
     });
+  }
 
-    return batches;
+  async getBatchStudents(batchId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    
+    const [students, total] = await Promise.all([
+      this.prisma.student.findMany({
+        where: {
+          batchId,
+          user: { isActive: true },
+        },
+        select: {
+          id: true,
+          registerNumber: true,
+          user: { select: { id: true, name: true } },
+        },
+        orderBy: { registerNumber: 'asc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.student.count({
+        where: {
+          batchId,
+          user: { isActive: true },
+        },
+      }),
+    ]);
+
+    return {
+      students,
+      page,
+      limit,
+      total,
+      hasMore: skip + students.length < total,
+    };
   }
 
   async registerTeam(

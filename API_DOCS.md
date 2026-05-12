@@ -1848,10 +1848,10 @@ Allows a team member to submit a progress update. The backend verifies that the 
 
 ---
 
-### GET `/hackathons/department-students`
+### GET `/hackathons/department-batches`
 > **Access:** `STUDENT`
 
-Retrieves all active batches and their active students for the current user's department. Used by students to select team members for group hackathons.
+Retrieves all active batches for the current user's department. Used by students to browse batches before loading their students.
 
 **Success Response (200):**
 ```json
@@ -1859,17 +1859,38 @@ Retrieves all active batches and their active students for the current user's de
   {
     "id": "batch-uuid",
     "name": "B.Tech CSE 2024",
-    "currentSemester": 1,
-    "students": [
-      {
-        "id": "student-uuid",
-        "registerNumber": "12345678",
-        "user": {
-          "id": "user-uuid",
-          "name": "John Doe"
-        }
-      }
-    ]
+    "currentSemester": 1
   }
 ]
+```
+
+---
+
+### GET `/hackathons/batches/:batchId/students`
+> **Access:** `STUDENT`
+
+Retrieves active students for a specific batch with pagination.
+
+**Query Parameters:**
+- `page` (optional, default: 1)
+- `limit` (optional, default: 20)
+
+**Success Response (200):**
+```json
+{
+  "students": [
+    {
+      "id": "student-uuid",
+      "registerNumber": "12345678",
+      "user": {
+        "id": "user-uuid",
+        "name": "John Doe"
+      }
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 60,
+  "hasMore": true
+}
 ```
