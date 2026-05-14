@@ -144,4 +144,29 @@ export class UsersService {
 
     return { message: 'Password updated successfully' };
   }
+
+  async addFcmToken(userId: string, token: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmTokens: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.fcmTokens.includes(token)) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { fcmTokens: { push: token } },
+      });
+    }
+    return { message: 'FCM token registered successfully' };
+  }
+
+  async removeFcmToken(userId: string, token: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmTokens: true } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updatedTokens = user.fcmTokens.filter((t) => t !== token);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmTokens: { set: updatedTokens } },
+    });
+    return { message: 'FCM token removed successfully' };
+  }
 }

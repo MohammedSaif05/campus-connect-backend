@@ -5,12 +5,16 @@ import {
   getPrismaPageParams,
   paginatedResponse,
 } from '../common/utils/pagination.util.js';
+import { FirebaseService } from './firebase.service.js';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly firebaseService: FirebaseService,
+  ) {}
 
   /**
    * Creates a notification. Called from other services (e.g., OD service).
@@ -22,6 +26,7 @@ export class NotificationsService {
     title: string;
     message: string;
   }) {
+    // 1. Create notification in DB
     const notification = await this.prisma.notification.create({
       data: {
         userId: data.userId,
@@ -34,6 +39,22 @@ export class NotificationsService {
     this.logger.log(
       `Notification sent to user ${data.userId}: "${data.title}"`,
     );
+
+    // 2. Fetch user's FCM tokens
+    const user = await this.prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { fcmTokens: true },
+    });
+
+    // 3. Send Push Notification if tokens exist
+    if (user?.fcmTokens && user.fcmTokens.length > 0) {
+      await this.firebaseService.sendPushNotification(
+        user.fcmTokens,
+        data.title,
+        data.message,
+        { notificationId: notification.id }
+      );
+    }
 
     return notification;
   }

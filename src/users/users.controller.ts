@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Delete, Body, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
@@ -36,5 +36,15 @@ export class UsersController {
       changePasswordDto.currentPassword,
       changePasswordDto.newPassword,
     );
+  }
+
+  @Post('me/fcm-token')
+  async addFcmToken(@CurrentUser() user: any, @Body('token') token: string) {
+    return this.usersService.addFcmToken(user.userId, token);
+  }
+
+  @Delete('me/fcm-token')
+  async removeFcmToken(@CurrentUser() user: any, @Body('token') token: string) {
+    return this.usersService.removeFcmToken(user.userId, token);
   }
 }
