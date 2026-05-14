@@ -56,12 +56,13 @@ export class OdService {
       throw new ForbiddenException('User must belong to a college');
     }
 
-    // Get the student record for this user
+    // Get the student record for this user (include name for notifications)
     const student = await this.prisma.student.findUnique({
       where: { userId: currentUser.userId },
       select: {
         id: true,
         batchId: true,
+        user: { select: { name: true } },
         batch: {
           select: {
             id: true,
@@ -127,11 +128,12 @@ export class OdService {
 
     // Notify the batch tutor
     if (student.batch.tutorId) {
+      const studentName = student.user.name;
       await this.notificationsService.create({
         userId: student.batch.tutorId,
         collegeId: currentUser.collegeId,
-        title: 'New OD Request',
-        message: `Student submitted ${isGroup ? 'a group' : 'an individual'} OD request for "${dto.subject}"`,
+        title: '📋 New OD Request',
+        message: `${studentName} submitted ${isGroup ? 'a group' : 'an individual'} OD request for "${dto.subject}". Please review and take action.`,
       });
     }
 
@@ -321,7 +323,10 @@ export class OdService {
       where: { id: requestId },
       include: {
         student: {
-          select: { userId: true },
+          select: {
+            userId: true,
+            user: { select: { name: true } },
+          },
         },
         batch: {
           select: {
@@ -440,6 +445,7 @@ export class OdService {
       odRequest,
       newStatus,
       currentUser.collegeId!,
+      dto.remark ?? null,
     );
 
     this.logger.log(
@@ -451,17 +457,31 @@ export class OdService {
 
   /**
    * Sends notifications based on the OD status transition.
+   * Ensures every stakeholder (student, tutor, HOD) is notified at the right time.
    */
   private async sendNotifications(
     odRequest: any,
     newStatus: OdStatus,
     collegeId: string,
+    remark: string | null,
   ) {
+    const studentName = odRequest.student.user?.name ?? 'A student';
+    const subject = odRequest.subject;
+    const remarkSuffix = remark ? `\n\nRemark: "${remark}"` : '';
+
     try {
       switch (newStatus) {
+        // ─── Tutor approved → notify Student + HOD ───────────────
         case OdStatus.PENDING_HOD: {
-          // Tutor approved → notify HOD
-          // Find HOD of the department
+          // 1. Notify Student — their request is progressing
+          await this.notificationsService.create({
+            userId: odRequest.student.userId,
+            collegeId,
+            title: '✅ OD Approved by Tutor',
+            message: `Your OD request for "${subject}" has been approved by your tutor and is now pending HOD approval.${remarkSuffix}`,
+          });
+
+          // 2. Notify HOD — new request awaiting their review
           const hod = await this.prisma.user.findFirst({
             where: {
               collegeId,
@@ -476,26 +496,65 @@ export class OdService {
             await this.notificationsService.create({
               userId: hod.id,
               collegeId,
-              title: 'OD Request Awaiting Approval',
-              message: `An OD request for "${odRequest.subject}" has been approved by tutor and needs your review.`,
+              title: '📋 OD Awaiting Your Approval',
+              message: `${studentName}'s OD request for "${subject}" has been approved by tutor and needs your review.`,
             });
           }
           break;
         }
 
-        case OdStatus.APPROVED:
-        case OdStatus.REJECTED_BY_TUTOR:
-        case OdStatus.REJECTED_BY_HOD: {
-          // Final decision → notify student
-          const statusLabel =
-            newStatus === OdStatus.APPROVED ? 'approved' : 'rejected';
-
+        // ─── Tutor rejected → notify Student ─────────────────────
+        case OdStatus.REJECTED_BY_TUTOR: {
           await this.notificationsService.create({
             userId: odRequest.student.userId,
             collegeId,
-            title: `OD Request ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}`,
-            message: `Your OD request for "${odRequest.subject}" has been ${statusLabel}.`,
+            title: '❌ OD Rejected by Tutor',
+            message: `Your OD request for "${subject}" has been rejected by your tutor.${remarkSuffix}`,
           });
+          break;
+        }
+
+        // ─── HOD approved → notify Student + Tutor ───────────────
+        case OdStatus.APPROVED: {
+          // 1. Notify Student — final approval
+          await this.notificationsService.create({
+            userId: odRequest.student.userId,
+            collegeId,
+            title: '🎉 OD Fully Approved',
+            message: `Great news! Your OD request for "${subject}" has been approved by HOD. You're all set!`,
+          });
+
+          // 2. Notify Tutor — HOD approved the request they forwarded
+          if (odRequest.batch.tutorId) {
+            await this.notificationsService.create({
+              userId: odRequest.batch.tutorId,
+              collegeId,
+              title: '✅ OD Approved by HOD',
+              message: `${studentName}'s OD request for "${subject}" has been approved by HOD.`,
+            });
+          }
+          break;
+        }
+
+        // ─── HOD rejected → notify Student + Tutor ───────────────
+        case OdStatus.REJECTED_BY_HOD: {
+          // 1. Notify Student — HOD rejected
+          await this.notificationsService.create({
+            userId: odRequest.student.userId,
+            collegeId,
+            title: '❌ OD Rejected by HOD',
+            message: `Your OD request for "${subject}" has been rejected by HOD.${remarkSuffix}`,
+          });
+
+          // 2. Notify Tutor — HOD rejected the request they forwarded
+          if (odRequest.batch.tutorId) {
+            await this.notificationsService.create({
+              userId: odRequest.batch.tutorId,
+              collegeId,
+              title: '❌ OD Rejected by HOD',
+              message: `${studentName}'s OD request for "${subject}" has been rejected by HOD.${remarkSuffix}`,
+            });
+          }
           break;
         }
       }

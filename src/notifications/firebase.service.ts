@@ -35,7 +35,6 @@ export class FirebaseService implements OnModuleInit {
         tokens,
         android: {
           notification: {
-            channelId: 'default', // matches notifee channel
             sound: 'default',
           },
         },
