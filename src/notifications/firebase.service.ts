@@ -25,6 +25,13 @@ export class FirebaseService implements OnModuleInit {
   async sendPushNotification(tokens: string[], title: string, body: string, data?: { [key: string]: string }) {
     if (!tokens || tokens.length === 0) return;
 
+    let channelId = 'od-general';
+    if (title.includes('✅') || title.includes('🎉') || title.includes('Approved')) {
+      channelId = 'od-approved';
+    } else if (title.includes('❌') || title.includes('Rejected')) {
+      channelId = 'od-rejected';
+    }
+
     try {
       const message: admin.messaging.MulticastMessage = {
         notification: {
@@ -34,7 +41,9 @@ export class FirebaseService implements OnModuleInit {
         data: data || {},
         tokens,
         android: {
+          priority: 'high',
           notification: {
+            channelId,
             sound: 'default',
           },
         },
